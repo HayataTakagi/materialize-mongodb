@@ -1,0 +1,5 @@
+.vagrant
+.bash_history
+.dbshell
+.mongorc.js
+.node_repl_history
