@@ -1,0 +1,3 @@
+{ "_id" : ObjectId("5bfb724862861930bc15b1ad"), "name" : "情報科学類" }
+{ "_id" : ObjectId("5bfb724862861930bc15b1ae"), "name" : "情報メディア創成学類" }
+{ "_id" : ObjectId("5bfb724862861930bc15b1af"), "name" : "知識・情報図書館学類" }
