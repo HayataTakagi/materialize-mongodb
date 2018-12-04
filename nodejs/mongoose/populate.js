@@ -1,5 +1,3 @@
-'use strict';
-
 var mongoose = require('mongoose');
 mongoose.connect('mongodb://localhost/nodedb', { useNewUrlParser: true });
 var db = mongoose.connection;
@@ -13,73 +11,98 @@ db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function() {
   // console.log("we're connected!");
 
-  var personSchema = Schema({
-    _id: Schema.Types.ObjectId,
-    name: String,
-    age: Number,
-    stories: [{ type: Schema.Types.ObjectId, ref: 'Story' }]
-  });
-
-  var storySchema = Schema({
-    author: { type: Schema.Types.ObjectId, ref: 'Person' },
-    title: String,
-    fans: [{ type: Schema.Types.ObjectId, ref: 'Person' }]
-  });
-
-  var mv_storySchema = Schema({
-    author: {
-      _id: Schema.Types.ObjectId,
-      name: String,
-      age: Number,
-      stories: [{ type: Schema.Types.ObjectId, ref: 'Story' }]},
-    title: String,
-    fans: [{
-      _id: Schema.Types.ObjectId,
-      name: String,
-      age: Number,
-      stories: [{ type: Schema.Types.ObjectId, ref: 'Story' }]}]
-  })
-
   // const schema = schemaBuilder();
   // const schemaList[schema.name] = schema;
 
-  storySchema.pre('findOne', function(next) {
-    console.log("--------pre_Start--------");
-    if (isMaterialized(this)) {
-      // モデル情報書き換え
-      this.model = MvStory;
-      // スキーマ情報書き換え
-      this.schema = mv_storySchema;
-      // コレクション情報書き換え
-      this._collection.collection = db.collection('mvstories');
-      // クエリ条件文情報書き換え
-      this._conditions.title = "Sotsuken_mv";
-      this._mongooseOptions = "";
-    }
-    console.log("--------pre_End--------");
-    next();
+  // スキーマ定義
+  // TODO: スキーマ作成の自動化
+  const schemaList = {
+    "mv_storySchema": Schema({
+      author: {
+        _id: Schema.Types.ObjectId,
+        name: String,
+        age: Number,
+        stories: [{ type: Schema.Types.ObjectId, ref: 'Story' }]},
+      title: String,
+      fans: [{
+        _id: Schema.Types.ObjectId,
+        name: String,
+        age: Number,
+        stories: [{ type: Schema.Types.ObjectId, ref: 'Story' }]}]
+    }),
+    "personSchema": Schema({
+      _id: Schema.Types.ObjectId,
+      name: String,
+      age: Number,
+      stories: [{ type: Schema.Types.ObjectId, ref: 'Story' }]
+    }),
+    "storySchema": Schema({
+      author: { type: Schema.Types.ObjectId, ref: 'Person' },
+      title: String,
+      fans: [{ type: Schema.Types.ObjectId, ref: 'Person' }]
+    }),
+  };
+
+  // プリフックの定義
+  Object.keys(schemaList).forEach(function(value) {
+    schemaList[value].pre('findOne', function(next) {
+      try {
+        console.log("--------pre_Start--------");
+        if (isMaterialized(this)) {
+          var self = this;
+          rewriteQueryToMv(self, function(err) {
+            next(err);
+          });
+        }
+        console.log("--------pre_End--------");
+        next();
+      } catch (err) {
+        next(err);
+      }
+    });
   });
 
-  mv_storySchema.pre('findOne', function(next) {
-    console.log("--------pre_Start--------");
-    console.log(this);
-    console.log("--------pre_End--------");
-    next();
-  });
+  // モデル定義
+  // TODO: モデル定義の自動化
+  var Story = mongoose.model('Story', schemaList['storySchema']);
+  var Person = mongoose.model('Person', schemaList['personSchema']);
+  var MvStory = mongoose.model('MvStory', schemaList['mv_storySchema']);
 
-  var Story = mongoose.model('Story', storySchema);
-  var Person = mongoose.model('Person', personSchema);
-  var MvStory = mongoose.model('MvStory', mv_storySchema);
-
+  // クエリ作成
   Story.
   findOne({ title: 'Sotsuken' }).
   populate('author').
   exec(function (err, story) {
-    if (err) return handleError(err);
+    if (err) return console.log(err);
     console.log(story);
   });
-});
 
-function isMaterialized(query) {
-  return false;
-}
+  // MvStory.
+  // findOne({ title: 'Sotsuken_mv' }).
+  // exec(function (err, story) {
+  //   if (err) return console.log(err);
+  //   console.log(story);
+  // });
+
+  // MV参照へのクエリ書き換え
+  function rewriteQueryToMv(query, callback) {
+    try {
+      // モデル情報の書き換え
+      query.model = MvStory;
+      // スキーマ情報書き換え
+      query.schema = mv_storySchema;
+      // コレクション情報書き換え
+      query._collection.collection = db.collection('mvstories');
+      // クエリ条件文情報書き換え
+      query._conditions.title = "Sotsuken_mv";
+      query._mongooseOptions = "";
+    } catch (err) {
+      callback(err);
+    }
+  }
+
+  // MV化されているかの判別
+  function isMaterialized(query) {
+    return true;
+  }
+});
