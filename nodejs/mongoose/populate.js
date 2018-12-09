@@ -10,7 +10,7 @@ db.on('error', console.error.bind(console, 'connection error:'));
 
 
 db.once('open', function() {
-showLog('Query Start.');
+showLog('[Query Start]');
 
   const schemaSeeds = {
     "personSchema": {
@@ -26,24 +26,19 @@ showLog('Query Start.');
     },
   };
 
-  // const schemaSeeds2 = {
-  //   "storySchema": {
-  //     _id: Schema.Types.ObjectId,
-  //     author: { type: Schema.Types.ObjectId, ref: 'Person' },
-  //     title: String,
-  //     fans: [{ type: Schema.Types.ObjectId, ref: 'Person' }]
-  //   },
-  // };
-
-  const schemaSeeds2 = {
+  let mvschemaSeeds = {
     "personSchema": {
       _id: Schema.Types.ObjectId,
       name: String,
       age: Number,
       stories: [{ type: Schema.Types.ObjectId, ref: 'Story' }]
+    },"storySchema": {
+      _id: Schema.Types.ObjectId,
+      author: { type: Schema.Types.ObjectId, ref: 'Person' },
+      title: String,
+      fans: [{ type: Schema.Types.ObjectId, ref: 'Person' }]
     },
   };
-
 
   // オリジナルスキーマの作成
   const schemaList = {};
@@ -51,20 +46,7 @@ showLog('Query Start.');
 
   // mvスキーマの定義
   let mvschemaList = {};
-  mvSchemaBilder(schemaSeeds2, mvschemaList);
-  // Object.keys(schemaSeeds).forEach(function(value) {
-  //   showLog(value);
-  //   mvschemaSeeds[value] = Schema(mvSchemaBilder(schemaSeeds[value]));
-  // });
-  // // TODO: ここでスタックオーバーが起こる
-  // mvschemaSeeds['personSchema'] = Object.assign({}, JSON.parse(JSON.stringify(schemaSeeds['personSchema'])));
-  // mvSchemaBilder(mvschemaSeeds['personSchema']);
-  // mvschemaList['personSchema'] = Schema(mvschemaSeeds['personSchema']);
-  //
-  // mvschemaSeeds['storySchema'] = Object.assign({}, JSON.parse(JSON.stringify(schemaSeeds['storySchema'])));
-  // mvSchemaBilder(mvschemaSeeds['storySchema']);
-  // mvschemaList['storySchema'] = Schema(mvschemaSeeds['storySchema']);
-  // console.log(mvschemaList['storySchema']);
+  mvSchemaBilder(schemaSeeds, mvschemaList);
 
 
   // プリフックの定義
@@ -86,12 +68,14 @@ showLog('Query Start.');
   //   });
   // });
 
+
+
   // モデル定義
   // TODO: モデル定義の自動化
   var Story = mongoose.model('Story', schemaList['storySchema']);
   var Person = mongoose.model('Person', schemaList['personSchema']);
-  // var MvStory = mongoose.model('MvStory', mvschemaList['storySchema']);
-  // var MvPerson = mongoose.model('MvPerson', mvschemaList['personSchema']);
+  var MvStory = mongoose.model('MvStory', mvschemaList['storySchema']);
+  var MvPerson = mongoose.model('MvPerson', mvschemaList['personSchema']);
 
   // クエリ作成
   // Story.
@@ -102,15 +86,12 @@ showLog('Query Start.');
   //   console.log(story);
   // });
 
-  // MvStory.
-  // findOne({ title: 'Sotsuken_mv' }).
-  // exec(function (err, story) {
-  //   if (err) return console.log(err);
-  //   console.log(story);
-  // });
-  // console.log('[Start]===mvpersonSchema===');
-  // console.log(mvschemaList['personSchema']);
-  // console.log('[End]===mvpersonSchema===');
+  MvStory.
+  findOne({ title: 'Sotsuken_mv' }).
+  exec(function (err, story) {
+    if (err) return console.log(err);
+    console.log(story);
+  });
 
   // MV参照へのクエリ書き換え
   function rewriteQueryToMv(query, callback) {
@@ -143,12 +124,14 @@ showLog('Query Start.');
 
   // 与えられたSeedsのMVスキーマを作成
   function mvSchemaBilder(originalSeedObjects, mvSchemaObjects) {
-    let mvschemaSeeds = {};
     Object.keys(originalSeedObjects).forEach(function(value) {
-      mvschemaSeeds[value] = completeAssign({}, schemaSeeds[value]);
+      // オリジナルSeedをハードコピー
+      // mvschemaSeeds[value] = completeAssign({}, originalSeedObjects[value]);
+      // ref型のスキーマをembed型に変換
       replaceRefSchema(mvschemaSeeds[value]);
+      // Seedからmvスキーマを作成
       mvSchemaObjects[value] = Schema(mvschemaSeeds[value]);
-      console.log(mvschemaSeeds[value]);
+      showLog('[Finish]mvSchemaBilder');
     });
   }
 
@@ -162,7 +145,7 @@ showLog('Query Start.');
       } else {
         if(obj[value].hasOwnProperty('ref')) {
           // 参照型の場合埋め込み型に書き換える
-          // console.log(schemaSeeds['personSchema']);
+          // mvschemaを自動生成した際ここでオリジナルのseedが書き換わってしまう
           obj[value] = completeAssign({}, schemaSeeds[getSchemaName(obj[value].ref)]);
         } else {
           // 探索を続ける
@@ -218,5 +201,5 @@ function completeAssign(target, ...sources) {
   return target;
 }
 
-  showLog('Query End.');
+  showLog('[Query End]');
 });
