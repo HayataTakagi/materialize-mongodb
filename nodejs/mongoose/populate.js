@@ -26,7 +26,7 @@ showLog('[Query Start]');
     },
   };
 
-  let mvschemaSeeds = {
+  let mvSchemaSeeds = {
     "personSchema": {
       _id: Schema.Types.ObjectId,
       name: String,
@@ -45,8 +45,8 @@ showLog('[Query Start]');
   schemaBilder(schemaSeeds, schemaList);
 
   // mvスキーマの定義
-  let mvschemaList = {};
-  mvSchemaBilder(schemaSeeds, mvschemaList);
+  let mvSchemaList = {};
+  mvSchemaBilder(schemaSeeds, mvSchemaList);
 
 
   // プリフックの定義
@@ -68,25 +68,22 @@ showLog('[Query Start]');
   //   });
   // });
 
-
-
   // モデル定義
-  // TODO: モデル定義の自動化
-  var Story = mongoose.model('Story', schemaList['storySchema']);
-  var Person = mongoose.model('Person', schemaList['personSchema']);
-  var MvStory = mongoose.model('MvStory', mvschemaList['storySchema']);
-  var MvPerson = mongoose.model('MvPerson', mvschemaList['personSchema']);
+  let modelList = {},
+      mvModelList = {};
+  modelBilder(schemaList, modelList);
+  modelBilder(mvSchemaList, mvModelList, true)
 
   // クエリ作成
-  // Story.
-  // findOne({ title: 'Sotsuken' }).
-  // populate('author').
-  // exec(function (err, story) {
-  //   if (err) return console.log(err);
-  //   console.log(story);
-  // });
+  modelList['Story'].
+  findOne({ title: 'Sotsuken' }).
+  populate('author').
+  exec(function (err, story) {
+    if (err) return console.log(err);
+    console.log(story);
+  });
 
-  MvStory.
+  mvModelList['Story'].
   findOne({ title: 'Sotsuken_mv' }).
   exec(function (err, story) {
     if (err) return console.log(err);
@@ -99,7 +96,7 @@ showLog('[Query Start]');
       // モデル情報の書き換え
       query.model = MvStory;
       // スキーマ情報書き換え
-      query.schema = mvschemaList['storySchema'];
+      query.schema = mvSchemaList['storySchema'];
       // コレクション情報書き換え
       query._collection.collection = db.collection('mvstories');
       // クエリ条件文情報書き換え
@@ -126,11 +123,12 @@ showLog('[Query Start]');
   function mvSchemaBilder(originalSeedObjects, mvSchemaObjects) {
     Object.keys(originalSeedObjects).forEach(function(value) {
       // オリジナルSeedをハードコピー
-      // mvschemaSeeds[value] = completeAssign({}, originalSeedObjects[value]);
+      // これを使用するとMaximum call stack size exceededが起こる
+      // mvSchemaSeeds[value] = completeAssign({}, originalSeedObjects[value]);
       // ref型のスキーマをembed型に変換
-      replaceRefSchema(mvschemaSeeds[value]);
+      replaceRefSchema(mvSchemaSeeds[value]);
       // Seedからmvスキーマを作成
-      mvSchemaObjects[value] = Schema(mvschemaSeeds[value]);
+      mvSchemaObjects[value] = Schema(mvSchemaSeeds[value]);
       showLog('[Finish]mvSchemaBilder');
     });
   }
@@ -155,9 +153,28 @@ showLog('[Query Start]');
     });
   }
 
+  // モデル作成
+  function modelBilder(schemaObjects, modelObjects, is_mv = false) {
+    Object.keys(schemaObjects).forEach(function(value) {
+      let modelName = getModelName(value);  // モデル名を生成
+      if (is_mv) {
+        // mvモデルの場合はモデル名に'Mv'を追加する
+        modelObjects[modelName] = mongoose.model('Mv' + modelName, schemaObjects[value]);
+      } else {
+        modelObjects[modelName] = mongoose.model(modelName, schemaObjects[value]);
+      }
+      });
+  }
+
   // モデル名からスキーマ名を取得
-  function getSchemaName(model_name) {
-    return model_name.toLowerCase() + 'Schema';
+  function getSchemaName(modelName) {
+    return modelame.toLowerCase() + 'Schema';
+  }
+
+  // スキーマ名からモデル名を取得
+  function getModelName(schemaName) {
+    let modelName = schemaName.slice(0, -6);  // 'Schema'を削除
+    return modelName.charAt(0).toUpperCase() + modelName.slice(1);  // 先頭文字を大文字化
   }
 
   // 経過時間,呼び出し元メソッド,メッセージをログ表示する
