@@ -1,5 +1,9 @@
 var mongoose = require('mongoose');
 mongoose.connect('mongodb://localhost/nodedb', { useNewUrlParser: true });
+// ログの設定
+mongoose.set("debug", (collectionName, method, query, doc, options) => {
+    console.log(`db.${collectionName}.${method}(` + JSON.stringify(query) + `, ${options})`);
+});
 var db = mongoose.connection;
 var Schema = mongoose.Schema;
 var ObjectId = Schema.Types.ObjectId;
@@ -84,6 +88,7 @@ showLog('[Process Start]');
   populate('author').
   exec(function (err, story) {
     if (err) return console.log(err);
+    showLog('クエリ結果');
     console.log(story);
   });
 
@@ -91,6 +96,7 @@ showLog('[Process Start]');
   findOne({ title: 'Sotsuken_mv' }).
   exec(function (err, story) {
     if (err) return console.log(err);
+    showLog('クエリ結果');
     console.log(story);
   });
   // ================================

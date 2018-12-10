@@ -5,3 +5,4 @@
 .node_repl_history
 nodejs/node_modules/
 nodejs/mongoose/log
+nodejs/log/
