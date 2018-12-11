@@ -1,9 +1,7 @@
 var mongoose = require('mongoose');
+const { PerformanceObserver, performance } = require('perf_hooks');
 mongoose.connect('mongodb://localhost/nodedb', { useNewUrlParser: true });
-// ログの設定
-mongoose.set("debug", (collectionName, method, query, doc, options) => {
-    console.log(`db.${collectionName}.${method}(` + JSON.stringify(query) + `, ${options})`);
-});
+
 var db = mongoose.connection;
 var Schema = mongoose.Schema;
 var ObjectId = Schema.Types.ObjectId;
@@ -13,6 +11,7 @@ let showLog = lib.showLog,
     completeAssign = lib.completeAssign,
     getSchemaName = lib.getSchemaName,
     getModelName = lib.getModelName;
+var preTime, postTime;
 
 db.on('error', console.error.bind(console, 'connection error:'));
 
@@ -57,11 +56,12 @@ showLog('[Process Start]');
   mvSchemaBilder(schemaSeeds, mvSchemaList);
 
 
-  // プリフックの定義
+  // プリフックの定義 ======================
   Object.keys(schemaList).forEach(function(value) {
     schemaList[value].pre('findOne', function(next) {
       try {
         showLog("Prehook | Start");
+        preTime = performance.now();
         if (isMaterialized(this)) {
           var self = this;
           rewriteQueryToMv(self, function(err) {
@@ -75,6 +75,26 @@ showLog('[Process Start]');
       }
     });
   });
+
+  // ポストフックの定義 ======================
+  Object.keys(schemaList).forEach(function(value) {
+    schemaList[value].post('findOne', function(doc, next) {
+      try {
+        showLog("Posthook | Start");
+        // 処理時間の計算
+        postTime = performance.now();
+        let elapsedTime = (postTime - preTime);
+        // クエリログの表示
+        let self = this;
+        queryLog(elapsedTime, self)
+        showLog("Posthook | End");
+        next();
+      } catch (err) {
+        next(err);
+      }
+    });
+  });
+  // ==================================
 
   // モデル定義
   let modelList = {},
@@ -92,13 +112,22 @@ showLog('[Process Start]');
     console.log(story);
   });
 
-  mvModelList['Story'].
-  findOne({ title: 'Sotsuken_mv' }).
-  exec(function (err, story) {
-    if (err) return console.log(err);
-    showLog('クエリ結果');
-    console.log(story);
-  });
+  // modelList['Person'].
+  // findOne({ name: 'takagi' }, 'age').
+  // limit(1).
+  // exec(function (err, person) {
+  //   if (err) return console.log(err);
+  //   showLog('クエリ結果');
+  //   console.log(person);
+  // });
+
+  // mvModelList['Story'].
+  // findOne({ title: 'Sotsuken_mv' }).
+  // exec(function (err, story) {
+  //   if (err) return console.log(err);
+  //   showLog('クエリ結果');
+  //   console.log(story);
+  // });
   // ================================
 
   // MV参照へのクエリ書き換え
@@ -148,6 +177,7 @@ showLog('[Process Start]');
   // ref先のrefは置き換えない
   function replaceRefSchema(obj) {
     Object.keys(obj).forEach(function(value) {
+
       if (typeof obj[value] != "object") {
         // String, Number, _id 等を弾く
         return;
@@ -175,6 +205,17 @@ showLog('[Process Start]');
         modelObjects[modelName] = mongoose.model(modelName, schemaObjects[value]);
       }
       });
+  }
+
+  // クエリログの取得
+  function queryLog(elapsedTime, obj) {
+    showLog('クエリログ');
+    console.log(elapsedTime + 'ms');
+    console.log(obj.options);  // option
+    console.log(obj.mongooseCollection.collection.s.name);  // collectionName
+    console.log(obj.op);  // method
+    console.log(obj._conditions);  // query
+    console.log(Object.keys(obj._mongooseOptions.populate));  // populate
   }
 
   showLog('[Process End]');
