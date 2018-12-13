@@ -10,8 +10,13 @@ let lib = require('./../lib');
 let showLog = lib.showLog,
     completeAssign = lib.completeAssign,
     getSchemaName = lib.getSchemaName,
-    getModelName = lib.getModelName;
+    getModelName = lib.getModelName,
+    getMvCollectionName = lib.getMvCollectionName,
+    getContext = lib.getContext;
 var preTime, postTime;
+
+// const is_showThisInPreHook = true;
+const is_showThisInPreHook = false;
 
 db.on('error', console.error.bind(console, 'connection error:'));
 
@@ -61,6 +66,9 @@ showLog('[Process Start]');
     schemaList[value].pre('findOne', function(next) {
       try {
         showLog("Prehook | Start");
+        if (is_showThisInPreHook) {
+          console.log(this.mongooseCollection.collectionName);
+        }
         preTime = performance.now();
         if (isMaterialized(this)) {
           var self = this;
@@ -133,15 +141,18 @@ showLog('[Process Start]');
   // MV参照へのクエリ書き換え
   function rewriteQueryToMv(query, callback) {
     try {
+      let modelName = query.model.modelName,
+          collectionName = query.mongooseCollection.collectionName;
       // モデル情報の書き換え
-      query.model = MvStory;
+      query.model = mvModelList[modelName];
       // スキーマ情報書き換え
-      query.schema = mvSchemaList['storySchema'];
+      query.schema = mvSchemaList[getSchemaName(modelName)];
       // コレクション情報書き換え
-      query._collection.collection = db.collection('mvstories');
-      // クエリ条件文情報書き換え
-      query._conditions.title = "Sotsuken_mv";
+      query._collection.collection = db.collection(getMvCollectionName(collectionName));
+      // populateオプションの除去
       query._mongooseOptions = "";
+      // クエリ条件文情報書き換え
+      // query._conditions.title = "Sotsuken_mv";
     } catch (err) {
       callback(err);
     }
@@ -215,7 +226,9 @@ showLog('[Process Start]');
     console.log(obj.mongooseCollection.collection.s.name);  // collectionName
     console.log(obj.op);  // method
     console.log(obj._conditions);  // query
-    console.log(Object.keys(obj._mongooseOptions.populate));  // populate
+    if (obj._mongooseOptions.populate != null) {
+      console.log(Object.keys(obj._mongooseOptions.populate));  // populate
+    }
   }
 
   showLog('[Process End]');

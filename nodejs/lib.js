@@ -40,8 +40,43 @@ module.exports = {
   getModelName: function (schemaName) {
     let modelName = schemaName.slice(0, -6);  // 'Schema'を削除
     return modelName.charAt(0).toUpperCase() + modelName.slice(1);  // 先頭文字を大文字化
+  },
+
+  // コレクション名からmvコレクション名を取得
+  getMvCollectionName: function(originCollection) {
+    return 'mv' + originCollection;
+  },
+
+  // keyのコンテキストを取得する
+  getContext: function getContext(obj, keyword, match) {
+    var root = [],
+    answer = [];
+    serachKeyValue(obj, keyword, match);
+    return answer;
+
+    function serachKeyValue(obj, keyword, match) {
+      Object.keys(obj).forEach(function(value) {
+        if (typeof obj[value] != "object") {
+          // String, Number, _id 等を弾く
+          return;
+        } else {
+          if(obj[value].hasOwnProperty(keyword) && obj[value][keyword] == match) {
+            root.push(value, keyword);
+            answer.push(root.concat());
+            root.pop();
+            root.pop();
+          } else {
+            // 探索を続ける
+            root.push(value);
+            serachKeyValue(obj[value], keyword, match);
+          }
+        }
+      });
+      root.pop();
+      return;
+    }
   }
-}
+};
 
 // 現在時刻をHH:mm:SS:ssで返す
 function getNowTime() {
@@ -51,6 +86,6 @@ function getNowTime() {
       now_second = now_time.getSeconds(),
       now_millisecond = now_time.getMilliseconds();
   return ('0'+now_hour).slice(-2) + ':' + ('0'+now_minute).slice(-2) + ':' +
-         ('0'+now_second).slice(-2) + ':' + ('0'+now_millisecond).slice(-2);
+  ('0'+now_second).slice(-2) + ':' + ('0'+now_millisecond).slice(-2);
 
 }
