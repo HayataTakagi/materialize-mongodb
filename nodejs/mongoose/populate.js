@@ -1,5 +1,6 @@
 var mongoose = require('mongoose');
 const { PerformanceObserver, performance } = require('perf_hooks');
+const co = require('co');
 mongoose.connect('mongodb://localhost/nodedb', { useNewUrlParser: true });
 
 var db = mongoose.connection;
@@ -8,11 +9,11 @@ var ObjectId = Schema.Types.ObjectId;
 // 外部ライブラリ読み込み
 let lib = require('./../lib');
 let showLog = lib.showLog,
-    completeAssign = lib.completeAssign,
-    getSchemaName = lib.getSchemaName,
-    getModelName = lib.getModelName,
-    getMvCollectionName = lib.getMvCollectionName,
-    getContext = lib.getContext;
+completeAssign = lib.completeAssign,
+getSchemaName = lib.getSchemaName,
+getModelName = lib.getModelName,
+getMvCollectionName = lib.getMvCollectionName,
+getContext = lib.getContext;
 var preTime, postTime;
 
 // const is_showThisInPreHook = true;
@@ -22,7 +23,7 @@ db.on('error', console.error.bind(console, 'connection error:'));
 
 
 db.once('open', function() {
-showLog('[Process Start]');
+  showLog('[Process Start]');
 
   const schemaSeeds = {
     "personSchema": {
@@ -94,7 +95,7 @@ showLog('[Process Start]');
         let elapsedTime = (postTime - preTime);
         // クエリログの表示
         let self = this;
-        queryLog(elapsedTime, self)
+        queryLog(elapsedTime, self);
         showLog("Posthook | End");
         next();
       } catch (err) {
@@ -106,19 +107,19 @@ showLog('[Process Start]');
 
   // モデル定義
   let modelList = {},
-      mvModelList = {};
+  mvModelList = {};
   modelBilder(schemaList, modelList);
   modelBilder(mvSchemaList, mvModelList, true)
 
   // クエリ ============================
-  modelList['Story'].
-  findOne({ title: 'Sotsuken' }).
-  populate('author').
-  exec(function (err, story) {
-    if (err) return console.log(err);
-    showLog('クエリ結果');
-    console.log(story);
-  });
+  // modelList['Story'].
+  // findOne({ title: 'Sotsuken' }).
+  // populate('author').
+  // exec(function (err, story) {
+  //   if (err) return console.log(err);
+  //   showLog('クエリ結果');
+  //   console.log(story);
+  // });
 
   // modelList['Person'].
   // findOne({ name: 'takagi' }, 'age').
@@ -136,13 +137,14 @@ showLog('[Process Start]');
   //   showLog('クエリ結果');
   //   console.log(story);
   // });
+  createMvDocument('Story', 'author', ['5c04f4b8b99d450ff1d8b4a4','5bfccb8286d08d1336bfd3b0'])
   // ================================
 
   // MV参照へのクエリ書き換え
   function rewriteQueryToMv(query, callback) {
     try {
       let modelName = query.model.modelName,
-          collectionName = query.mongooseCollection.collectionName;
+      collectionName = query.mongooseCollection.collectionName;
       // モデル情報の書き換え
       query.model = mvModelList[modelName];
       // スキーマ情報書き換え
@@ -160,13 +162,13 @@ showLog('[Process Start]');
 
   // MV化されているかの判別
   function isMaterialized(query) {
-    return false;
+    return true;
   }
 
   // Seedsからスキーマを作成する
   function schemaBilder(seedObjects, schemaObjects) {
     Object.keys(seedObjects).forEach(function(value) {
-        schemaObjects[value] = Schema(seedObjects[value]);
+      schemaObjects[value] = Schema(seedObjects[value]);
     });
   }
 
@@ -215,7 +217,7 @@ showLog('[Process Start]');
       } else {
         modelObjects[modelName] = mongoose.model(modelName, schemaObjects[value]);
       }
-      });
+    });
   }
 
   // クエリログの取得
@@ -229,6 +231,79 @@ showLog('[Process Start]');
     if (obj._mongooseOptions.populate != null) {
       console.log(Object.keys(obj._mongooseOptions.populate));  // populate
     }
+  }
+
+  // MVの作成
+  function createMvDocument(modelName, populate, document_id) {
+    let okCount=0, matchedCount=0, modifiedCount=0, upsertedCount=0;
+    modelList[modelName].
+    find({ _id: document_id }).
+    populate(populate).
+    exec(function (err, mvDocuments) {
+      if (err) return console.log(err);
+      showLog('クエリ結果(createMV)');
+
+      // coでforEach後に処理
+      co(function *(){
+        Object.keys(mvDocuments).forEach(function(value){
+          mvModelList[modelName].bulkWrite([
+            {
+              updateOne: {
+                filter: {_id: mvDocuments[value].id},
+                update: mvDocuments[value].toObject(),
+                upsert: true
+              }
+            }
+          ]).then(res => {
+            if (res.result.ok) okCount++;console.log('ok');;
+            if (res.matchedCount) matchedCount++;
+            if (res.modifiedCount) modifiedCount++;
+            if (res.upsertedCount) upsertedCount++;
+          });
+        });
+      }).then(() => {
+        console.log('co then');
+        console.log(okCount, matchedCount, modifiedCount, upsertedCount);
+      });
+
+      // promise all 後に処理 & co then 後に処理
+      // const promises =  Object.keys(mvDocuments).map((value) => {
+      //   console.log('in promises');
+      //   mvModelList[modelName].bulkWrite([
+      //     {
+      //       updateOne: {
+      //         filter: {_id: mvDocuments[value].id},
+      //         update: mvDocuments[value].toObject(),
+      //         upsert: true
+      //       }
+      //     }
+      //   ]).then(res => {
+      //     console.log('in promises then');
+      //     if (res.result.ok) okCount++;console.log('OK');
+      //     if (res.matchedCount) matchedCount++;
+      //     if (res.modifiedCount) modifiedCount++;
+      //     if (res.upsertedCount) upsertedCount++;
+      //   });
+      //   console.log('in promise end');
+      // });
+      // console.log('before promise all');
+      // co(function *(){
+      //   Promise.all(promises).then(() => {
+      //     console.log('promise all then');
+      //   });
+      // }).then(() => {
+      //   console.log('co then');
+      //   console.log(okCount, matchedCount, modifiedCount, upsertedCount);
+      // });
+      // console.log('out of co');
+
+      // Promise.all(promises).then(() => {
+      //   console.log('promise all then');
+      //   console.log(okCount, matchedCount, modifiedCount, upsertedCount);
+      // });
+      // console.log('out promise');
+      // console.log(okCount, matchedCount, modifiedCount, upsertedCount);
+    });
   }
 
   showLog('[Process End]');

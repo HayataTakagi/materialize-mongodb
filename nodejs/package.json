@@ -1,0 +1,23 @@
+{
+  "name": "nodejs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "hello.js",
+  "dependencies": {
+    "co": "^4.6.0",
+    "ejs": "^2.6.1",
+    "fsevents": "^1.2.4",
+    "mongodb": "^3.1.10",
+    "mongoose": "^5.3.13",
+    "n": "^2.1.12",
+    "nan": "^2.11.1",
+    "nodemon": "^1.18.6"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
