@@ -241,68 +241,32 @@ db.once('open', function() {
     populate(populate).
     exec(function (err, mvDocuments) {
       if (err) return console.log(err);
-      showLog('クエリ結果(createMV)');
-
-      // coでforEach後に処理
-      co(function *(){
-        Object.keys(mvDocuments).forEach(function(value){
-          mvModelList[modelName].bulkWrite([
-            {
-              updateOne: {
-                filter: {_id: mvDocuments[value].id},
-                update: mvDocuments[value].toObject(),
-                upsert: true
-              }
+      // promise all 後に処理 & co then 後に処理
+      const promises =  Object.keys(mvDocuments).map((value) => {
+        mvModelList[modelName].bulkWrite([
+          {
+            updateOne: {
+              filter: {_id: mvDocuments[value].id},  // idで検索する
+              update: mvDocuments[value].toObject(),  // 保存するobject
+              upsert: true  // 存在しなかった場合新規作成する
             }
-          ]).then(res => {
-            if (res.result.ok) okCount++;console.log('ok');;
-            if (res.matchedCount) matchedCount++;
-            if (res.modifiedCount) modifiedCount++;
-            if (res.upsertedCount) upsertedCount++;
-          });
+          }
+        ]).then(res => {
+          // console.log('id:'+mvDocuments[value].id, 'ok:'+res.result.ok, 'matchedCount:'+res.matchedCount, 'modifiedCount:'+res.modifiedCount, 'upsertedCount:'+res.upsertedCount);
+          showLog('createMvDocument | id: '+mvDocuments[value].id+',  ok:'+res.result.ok+', matchedCount:'+res.matchedCount+', modifiedCount:'+res.modifiedCount+', upsertedCount:'+res.upsertedCount);
+          // if (res.result.ok) okCount++;
+          // if (res.matchedCount) matchedCount++;
+          // if (res.modifiedCount) modifiedCount++;
+          // if (res.upsertedCount) upsertedCount++;
+        });
+      });
+      co(function *(){
+        Promise.all(promises).then(() => {
+          // something
         });
       }).then(() => {
-        console.log('co then');
-        console.log(okCount, matchedCount, modifiedCount, upsertedCount);
+        // somthing
       });
-
-      // promise all 後に処理 & co then 後に処理
-      // const promises =  Object.keys(mvDocuments).map((value) => {
-      //   console.log('in promises');
-      //   mvModelList[modelName].bulkWrite([
-      //     {
-      //       updateOne: {
-      //         filter: {_id: mvDocuments[value].id},
-      //         update: mvDocuments[value].toObject(),
-      //         upsert: true
-      //       }
-      //     }
-      //   ]).then(res => {
-      //     console.log('in promises then');
-      //     if (res.result.ok) okCount++;console.log('OK');
-      //     if (res.matchedCount) matchedCount++;
-      //     if (res.modifiedCount) modifiedCount++;
-      //     if (res.upsertedCount) upsertedCount++;
-      //   });
-      //   console.log('in promise end');
-      // });
-      // console.log('before promise all');
-      // co(function *(){
-      //   Promise.all(promises).then(() => {
-      //     console.log('promise all then');
-      //   });
-      // }).then(() => {
-      //   console.log('co then');
-      //   console.log(okCount, matchedCount, modifiedCount, upsertedCount);
-      // });
-      // console.log('out of co');
-
-      // Promise.all(promises).then(() => {
-      //   console.log('promise all then');
-      //   console.log(okCount, matchedCount, modifiedCount, upsertedCount);
-      // });
-      // console.log('out promise');
-      // console.log(okCount, matchedCount, modifiedCount, upsertedCount);
     });
   }
 
