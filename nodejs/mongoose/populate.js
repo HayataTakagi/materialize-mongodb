@@ -1,4 +1,5 @@
 var mongoose = require('mongoose');
+const utils = require('mongoose-utils/node_modules/mongoose/lib/utils');
 const { PerformanceObserver, performance } = require('perf_hooks');
 const co = require('co');
 mongoose.connect('mongodb://localhost/nodedb', { useNewUrlParser: true });
@@ -65,6 +66,10 @@ db.once('open', function() {
       date: {type: Date, default: Date.now},
     }, "mvlogSchema": {
       _id: Schema.Types.ObjectId,
+      doc_id: Schema.Types.ObjectId,
+      collection_name: String,
+      model_name: String,
+      populate: [ String ],
       created_at: {type: Date, default: Date.now},
       updated_at: {type: Date, default: Date.now},
     },
@@ -135,14 +140,14 @@ db.once('open', function() {
   modelBilder(logSchemaList, logModelList);
 
   // クエリ ============================
-  modelList['Story'].
-  findOne({ title: 'Sotsuken' }).
-  populate(['author', 'fans']).
-  exec(function (err, story) {
-    if (err) return console.log(err);
-    showLog('クエリ結果');
-    console.log(story);
-  });
+  // modelList['Story'].
+  // findOne({ title: 'Sotsuken' }).
+  // populate(['author', 'fans']).
+  // exec(function (err, story) {
+  //   if (err) return console.log(err);
+  //   showLog('クエリ結果');
+  //   console.log(story);
+  // });
 
   // modelList['Person'].
   // findOne({ name: 'takagi' }).
@@ -160,7 +165,7 @@ db.once('open', function() {
   //   showLog('クエリ結果');
   //   console.log(story);
   // });
-  // createMvDocument('Story', ['author', 'fans'], ['5c04f4b8b99d450ff1d8b4a4','5bfccb8286d08d1336bfd3b0'])
+  createMvDocument('Story', ['author', 'author'], ['5c04f4b8b99d450ff1d8b4a4','5bfccb8286d08d1336bfd3b0'])
   // ================================
 
   // MV参照へのクエリ書き換え
@@ -203,6 +208,7 @@ db.once('open', function() {
       // mvSchemaSeeds[value] = completeAssign({}, originalSeedObjects[value]);
       // ref型のスキーマをembed型に変換
       replaceRefSchema(mvSchemaSeeds[value]);
+      addLogSchemaToMv(mvSchemaSeeds[value]);
       // Seedからmvスキーマを作成
       mvSchemaObjects[value] = Schema(mvSchemaSeeds[value]);
       showLog('mvSchemaBilder | ' + value + '\'s mv has created.');
@@ -228,6 +234,13 @@ db.once('open', function() {
         }
       }
     });
+  }
+
+  // mvスキーマseedにlog要素を追加
+  function addLogSchemaToMv(obj) {
+    obj.log_populate = [ String ];
+    obj.log_created_at = {type: Date, default: Date.now};
+    obj.log_updated_at = {type: Date, default: Date.now};
   }
 
   // モデル作成
@@ -264,32 +277,39 @@ db.once('open', function() {
   // MVの作成
   function createMvDocument(modelName, populate, document_id) {
     let okCount=0, matchedCount=0, modifiedCount=0, upsertedCount=0;
+    let collectionName = utils.toCollectionName(modelName);
     modelList[modelName].
     find({ _id: document_id }).
     populate(populate).
     exec(function (err, mvDocuments) {
       if (err) return console.log(err);
       // promise all 後に処理 & co then 後に処理
-      const promises =  Object.keys(mvDocuments).map((value) => {
+      const mvSavePromises =  Object.keys(mvDocuments).map((value) => {
+        // ログ要素を追加
+        mvDocuments[value] = mvDocuments[value].toObject();
+        mvDocuments[value].log_populate = populate;
+        // mvをdbに保存
         mvModelList[modelName].bulkWrite([
           {
             updateOne: {
-              filter: {_id: mvDocuments[value].id},  // idで検索する
-              update: mvDocuments[value].toObject(),  // 保存するobject
-              upsert: true  // 存在しなかった場合新規作成する
+              filter: {_id: mvDocuments[value]._id},  // idで検索する
+              update: mvDocuments[value],  // 保存するobject
+              upsert: true,  // 存在しなかった場合新規作成する
+              setDefaultsOnInsert: true
             }
           }
         ]).then(res => {
-          // console.log('id:'+mvDocuments[value].id, 'ok:'+res.result.ok, 'matchedCount:'+res.matchedCount, 'modifiedCount:'+res.modifiedCount, 'upsertedCount:'+res.upsertedCount);
-          showLog('createMvDocument | id: '+mvDocuments[value].id+',  ok:'+res.result.ok+', matchedCount:'+res.matchedCount+', modifiedCount:'+res.modifiedCount+', upsertedCount:'+res.upsertedCount);
-          // if (res.result.ok) okCount++;
-          // if (res.matchedCount) matchedCount++;
-          // if (res.modifiedCount) modifiedCount++;
-          // if (res.upsertedCount) upsertedCount++;
+          showLog('createMvDocument | id: '+mvDocuments[value]._id+',  ok:'+res.result.ok+', matchedCount:'+res.matchedCount+', modifiedCount:'+res.modifiedCount+', upsertedCount:'+res.upsertedCount);
+          // 変更があった際にupdate_atを更新
+          if (res.modifiedCount) {
+            mvModelList[modelName].updateOne({_id: mvDocuments[value]._id},{log_updated_at: Date.now()}, (err, rawResponse) => {
+              if (err) return console.log(err);
+            });
+          }
         });
       });
       co(function *(){
-        Promise.all(promises).then(() => {
+        Promise.all(mvSavePromises).then(() => {
           // something
         });
       }).then(() => {
