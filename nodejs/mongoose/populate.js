@@ -31,7 +31,7 @@ db.once('open', function() {
       name: String,
       age: Number,
       stories: [{ type: Schema.Types.ObjectId, ref: 'Story' }]
-    },"storySchema": {
+    }, "storySchema": {
       _id: Schema.Types.ObjectId,
       author: { type: Schema.Types.ObjectId, ref: 'Person' },
       title: String,
@@ -45,11 +45,28 @@ db.once('open', function() {
       name: String,
       age: Number,
       stories: [{ type: Schema.Types.ObjectId, ref: 'Story' }]
-    },"storySchema": {
+    }, "storySchema": {
       _id: Schema.Types.ObjectId,
       author: { type: Schema.Types.ObjectId, ref: 'Person' },
       title: String,
       fans: [{ type: Schema.Types.ObjectId, ref: 'Person' }]
+    },
+  };
+
+  const logSchemaSeeds = {
+    "userlogSchema": {
+      _id: Schema.Types.ObjectId,
+      elapsed_time: Number,
+      options: Schema.Types.Mixed,
+      collection_name: String,
+      method: String,
+      query: Schema.Types.Mixed,
+      populate: [ String ],
+      date: {type: Date, default: Date.now},
+    }, "mvlogSchema": {
+      _id: Schema.Types.ObjectId,
+      created_at: {type: Date, default: Date.now},
+      updated_at: {type: Date, default: Date.now},
     },
   };
 
@@ -60,6 +77,10 @@ db.once('open', function() {
   // mvスキーマの定義
   let mvSchemaList = {};
   mvSchemaBilder(schemaSeeds, mvSchemaList);
+
+  // logスキーマの定義
+  let logSchemaList = {};
+  schemaBilder(logSchemaSeeds, logSchemaList);
 
 
   // プリフックの定義 ======================
@@ -107,22 +128,24 @@ db.once('open', function() {
 
   // モデル定義
   let modelList = {},
-  mvModelList = {};
+  mvModelList = {},
+  logModelList = {};
   modelBilder(schemaList, modelList);
-  modelBilder(mvSchemaList, mvModelList, true)
+  modelBilder(mvSchemaList, mvModelList, true);
+  modelBilder(logSchemaList, logModelList);
 
   // クエリ ============================
-  // modelList['Story'].
-  // findOne({ title: 'Sotsuken' }).
-  // populate('author').
-  // exec(function (err, story) {
-  //   if (err) return console.log(err);
-  //   showLog('クエリ結果');
-  //   console.log(story);
-  // });
+  modelList['Story'].
+  findOne({ title: 'Sotsuken' }).
+  populate(['author', 'fans']).
+  exec(function (err, story) {
+    if (err) return console.log(err);
+    showLog('クエリ結果');
+    console.log(story);
+  });
 
   // modelList['Person'].
-  // findOne({ name: 'takagi' }, 'age').
+  // findOne({ name: 'takagi' }).
   // limit(1).
   // exec(function (err, person) {
   //   if (err) return console.log(err);
@@ -137,7 +160,7 @@ db.once('open', function() {
   //   showLog('クエリ結果');
   //   console.log(story);
   // });
-  createMvDocument('Story', 'author', ['5c04f4b8b99d450ff1d8b4a4','5bfccb8286d08d1336bfd3b0'])
+  // createMvDocument('Story', ['author', 'fans'], ['5c04f4b8b99d450ff1d8b4a4','5bfccb8286d08d1336bfd3b0'])
   // ================================
 
   // MV参照へのクエリ書き換え
@@ -162,7 +185,7 @@ db.once('open', function() {
 
   // MV化されているかの判別
   function isMaterialized(query) {
-    return true;
+    return false;
   }
 
   // Seedsからスキーマを作成する
@@ -223,14 +246,19 @@ db.once('open', function() {
   // クエリログの取得
   function queryLog(elapsedTime, obj) {
     showLog('クエリログ');
-    console.log(elapsedTime + 'ms');
-    console.log(obj.options);  // option
-    console.log(obj.mongooseCollection.collection.s.name);  // collectionName
-    console.log(obj.op);  // method
-    console.log(obj._conditions);  // query
+    let saveObject = {
+      elapsed_time: elapsedTime,
+      options: obj.options,
+      collection_name: obj.mongooseCollection.collection.s.name,
+      method: obj.op,
+      query: obj._conditions,
+    };
     if (obj._mongooseOptions.populate != null) {
-      console.log(Object.keys(obj._mongooseOptions.populate));  // populate
+      saveObject.populate = Object.keys(obj._mongooseOptions.populate);
     }
+    logModelList['Userlog'].insertMany(saveObject, function(err, docs) {
+      if (err) return console.log(err);
+    });
   }
 
   // MVの作成
