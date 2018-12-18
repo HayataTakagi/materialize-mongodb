@@ -1,72 +1,68 @@
-var mongoose = require('mongoose');
-const utils = require('mongoose-utils/node_modules/mongoose/lib/utils');
-const { PerformanceObserver, performance } = require('perf_hooks');
-const co = require('co');
-mongoose.connect('mongodb://localhost/nodedb', { useNewUrlParser: true });
-
-var db = mongoose.connection;
-var Schema = mongoose.Schema;
-var ObjectId = Schema.Types.ObjectId;
-// 外部ライブラリ読み込み
-let lib = require('./../lib');
-let showLog = lib.showLog,
+const mongoose = require('mongoose'),
+utils = require('mongoose-utils/node_modules/mongoose/lib/utils'),
+{ PerformanceObserver, performance } = require('perf_hooks'),
+co = require('co'),
+lib = require('./../lib');
+const showLog = lib.showLog,
 completeAssign = lib.completeAssign,
 getSchemaName = lib.getSchemaName,
 getModelName = lib.getModelName,
 getMvCollectionName = lib.getMvCollectionName,
 getContext = lib.getContext;
+
+mongoose.connect('mongodb://localhost/nodedb', { useNewUrlParser: true });
+var db = mongoose.connection;
+var Schema = mongoose.Schema;
+var ObjectId = Schema.Types.ObjectId,
+Mixed = Schema.Types.Mixed;
+
 var preTime, postTime;
 
-// const is_showThisInPreHook = true;
-const is_showThisInPreHook = false;
-
 db.on('error', console.error.bind(console, 'connection error:'));
-
-
 db.once('open', function() {
   showLog('[Process Start]');
 
   const schemaSeeds = {
     "personSchema": {
-      _id: Schema.Types.ObjectId,
+      _id: ObjectId,
       name: String,
       age: Number,
-      stories: [{ type: Schema.Types.ObjectId, ref: 'Story' }]
+      stories: [{ type: ObjectId, ref: 'Story' }]
     }, "storySchema": {
-      _id: Schema.Types.ObjectId,
-      author: { type: Schema.Types.ObjectId, ref: 'Person' },
+      _id: ObjectId,
+      author: { type: ObjectId, ref: 'Person' },
       title: String,
-      fans: [{ type: Schema.Types.ObjectId, ref: 'Person' }]
+      fans: [{ type: ObjectId, ref: 'Person' }]
     },
   };
 
   let mvSchemaSeeds = {
     "personSchema": {
-      _id: Schema.Types.ObjectId,
+      _id: ObjectId,
       name: String,
       age: Number,
-      stories: [{ type: Schema.Types.ObjectId, ref: 'Story' }]
+      stories: [{ type: ObjectId, ref: 'Story' }]
     }, "storySchema": {
-      _id: Schema.Types.ObjectId,
-      author: { type: Schema.Types.ObjectId, ref: 'Person' },
+      _id: ObjectId,
+      author: { type: ObjectId, ref: 'Person' },
       title: String,
-      fans: [{ type: Schema.Types.ObjectId, ref: 'Person' }]
+      fans: [{ type: ObjectId, ref: 'Person' }]
     },
   };
 
   const logSchemaSeeds = {
     "userlogSchema": {
-      _id: Schema.Types.ObjectId,
+      _id: ObjectId,
       elapsed_time: Number,
-      options: Schema.Types.Mixed,
+      options: Mixed,
       collection_name: String,
       method: String,
-      query: Schema.Types.Mixed,
+      query: Mixed,
       populate: [ String ],
       date: {type: Date, default: Date.now},
     }, "mvlogSchema": {
-      _id: Schema.Types.ObjectId,
-      doc_id: Schema.Types.ObjectId,
+      _id: ObjectId,
+      doc_id: ObjectId,
       collection_name: String,
       model_name: String,
       populate: [ String ],
@@ -93,9 +89,6 @@ db.once('open', function() {
     schemaList[value].pre('findOne', function(next) {
       try {
         showLog("Prehook | Start");
-        if (is_showThisInPreHook) {
-          console.log(this.mongooseCollection.collectionName);
-        }
         preTime = performance.now();
         if (isMaterialized(this)) {
           var self = this;
