@@ -89,14 +89,36 @@ db.once('open', function() {
       try {
         showLog("Prehook | Start");
         preTime = performance.now();
-        if (isMaterialized(this)) {
-          var self = this;
-          rewriteQueryToMv(self, function(err) {
-            next(err);
+        var self = this;
+
+        if (self._mongooseOptions.populate == null) {
+          // populateがない
+          showLog("Prehook | End");
+          next();
+        } else {
+          let modelName = self.model.modelName,
+          collectionName = self.mongooseCollection.collectionName,
+          populate = Object.keys(self._mongooseOptions.populate);
+          // MVログが存在するかでMV化されているか判定する
+          logModelList['Mvlog'].countDocuments({original_model: modelName, original_coll: collectionName, populate: populate}, function(err, count) {
+            if (err) {console.log(err); return false;}
+            if (count === 1) {
+              showLog('Exist MV.');
+            } else {
+              showLog('NOT Exist MV');
+              showLog("Prehook | End");
+              next();
+            }
+          })
+          .then(res => {
+            // クエリをmvに書き換え
+            rewriteQueryToMv(self, function(err) {
+              next(err);
+            });
+            showLog("Prehook | End");
+            next();
           });
         }
-        showLog("Prehook | End");
-        next();
       } catch (err) {
         next(err);
       }
@@ -132,14 +154,14 @@ db.once('open', function() {
   modelBilder(logSchemaList, logModelList);
 
   // クエリ ============================
-  // modelList['Story'].
-  // findOne({ title: 'Sotsuken' }).
-  // populate(['author', 'fans']).
-  // exec(function (err, story) {
-  //   if (err) return console.log(err);
-  //   showLog('クエリ結果');
-  //   console.log(story);
-  // });
+  modelList['Story'].
+  findOne({ title: 'Sotsuken' }).
+  populate(['author', 'fans']).
+  exec(function (err, story) {
+    if (err) return console.log(err);
+    showLog('クエリ結果');
+    console.log(story);
+  });
 
   // modelList['Person'].
   // findOne({ name: 'takagi' }).
@@ -157,7 +179,7 @@ db.once('open', function() {
   //   showLog('クエリ結果');
   //   console.log(story);
   // });
-  createMvDocument('Story', ['author', 'fans'], ['5c04f4b8b99d450ff1d8b4a4','5bfccb8286d08d1336bfd3b0']);
+  // createMvDocument('Story', ['author', 'fans'], ['5c04f4b8b99d450ff1d8b4a4','5bfccb8286d08d1336bfd3b0']);
   // ================================
 
   // MV参照へのクエリ書き換え
@@ -173,33 +195,10 @@ db.once('open', function() {
       query._collection.collection = db.collection(getMvCollectionName(collectionName));
       // populateオプションの除去
       query._mongooseOptions = "";
-      // クエリ条件文情報書き換え
-      // query._conditions.title = "Sotsuken_mv";
+      showLog('Finish rewrite Query To Mv');
     } catch (err) {
       callback(err);
     }
-  }
-
-  // MV化されているかの判別
-  function isMaterialized(query) {
-    if (query._mongooseOptions.populate == null) {
-      return false;
-    }
-    let modelName = query.model.modelName,
-    collectionName = query.mongooseCollection.collectionName,
-    populate = Object.keys(query._mongooseOptions.populate);
-    // MVログが存在するかでMV化されているか判定する
-    logModelList['Mvlog'].countDocuments({original_model: modelName, original_coll: collectionName, populate: populate}, function(err, count) {
-      if (err) return console.log(err);
-      if (count === 1) {
-        showLog('Exist MV.');
-        return true;
-      } else {
-        showLog('NOT Exist MV');
-        return false;
-      }
-    });
-    return false;
   }
 
   // Seedsからスキーマを作成する
@@ -347,6 +346,4 @@ db.once('open', function() {
       if (err) return console.log(err);
     });
   }
-
-  showLog('[Process End]');
 });
