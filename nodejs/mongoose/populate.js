@@ -62,9 +62,8 @@ db.once('open', function() {
       date: {type: Date, default: Date.now},
     }, "mvlogSchema": {
       _id: ObjectId,
-      doc_id: ObjectId,
-      collection_name: String,
-      model_name: String,
+      original_model: String,
+      original_coll: String,
       populate: [ String ],
       created_at: {type: Date, default: Date.now},
       updated_at: {type: Date, default: Date.now},
@@ -158,7 +157,7 @@ db.once('open', function() {
   //   showLog('クエリ結果');
   //   console.log(story);
   // });
-  createMvDocument('Story', ['author', 'author'], ['5c04f4b8b99d450ff1d8b4a4','5bfccb8286d08d1336bfd3b0'])
+  createMvDocument('Story', ['author', 'fans'], ['5c04f4b8b99d450ff1d8b4a4','5bfccb8286d08d1336bfd3b0']);
   // ================================
 
   // MV参照へのクエリ書き換え
@@ -183,6 +182,23 @@ db.once('open', function() {
 
   // MV化されているかの判別
   function isMaterialized(query) {
+    if (query._mongooseOptions.populate == null) {
+      return false;
+    }
+    let modelName = query.model.modelName,
+    collectionName = query.mongooseCollection.collectionName,
+    populate = Object.keys(query._mongooseOptions.populate);
+    // MVログが存在するかでMV化されているか判定する
+    logModelList['Mvlog'].countDocuments({original_model: modelName, original_coll: collectionName, populate: populate}, function(err, count) {
+      if (err) return console.log(err);
+      if (count === 1) {
+        showLog('Exist MV.');
+        return true;
+      } else {
+        showLog('NOT Exist MV');
+        return false;
+      }
+    });
     return false;
   }
 
@@ -281,6 +297,7 @@ db.once('open', function() {
         // ログ要素を追加
         mvDocuments[value] = mvDocuments[value].toObject();
         mvDocuments[value].log_populate = populate;
+        mvDocuments[value].log_updated_at = Date.now();
         // mvをdbに保存
         mvModelList[modelName].bulkWrite([
           {
@@ -292,13 +309,12 @@ db.once('open', function() {
             }
           }
         ]).then(res => {
-          showLog('createMvDocument | id: '+mvDocuments[value]._id+',  ok:'+res.result.ok+', matchedCount:'+res.matchedCount+', modifiedCount:'+res.modifiedCount+', upsertedCount:'+res.upsertedCount);
-          // 変更があった際にupdate_atを更新
-          if (res.modifiedCount) {
-            mvModelList[modelName].updateOne({_id: mvDocuments[value]._id},{log_updated_at: Date.now()}, (err, rawResponse) => {
-              if (err) return console.log(err);
-            });
-          }
+          showLog('createMvDocument | id: ' + mvDocuments[value]._id +
+          ',ok:' + res.result.ok + ', matchedCount:' + res.matchedCount +
+          ',modifiedCount:' + res.modifiedCount + ', upsertedCount:' +
+          res.upsertedCount);
+          // MVログを記載
+          createMvLog(modelName, collectionName, populate);
         });
       });
       co(function *(){
@@ -308,6 +324,27 @@ db.once('open', function() {
       }).then(() => {
         // somthing
       });
+    });
+  }
+
+  // MVログの記録
+  function createMvLog(modelName, collectionName, populate) {
+    logModelList['Mvlog'].bulkWrite([
+      {
+        updateOne: {
+          filter: {original_model: modelName, original_coll: collectionName, populate: populate},  // 各値で検索
+          update: {updated_at: Date.now()},  // 更新日を更新
+          upsert: true,  // 存在しなかった場合新規作成する
+          setDefaultsOnInsert: true  // スキーマでdefaultで設定されている値を代入
+        }
+      }
+    ]);
+  }
+
+  // MVログの削除
+  function removeMvLog(modelName, collectionName, populate) {
+    logModelList['Mvlog'].deleteMany({original_model: modelName, original_coll: collectionName, populate: populate}, function(err) {
+      if (err) return console.log(err);
     });
   }
 
