@@ -102,19 +102,17 @@ Object.keys(schemaList).forEach(function(value) {
           if (err) {console.log(err); return false;}
           if (count === 1) {
             showLog('Exist MV.');
+            // クエリをmvに書き換え
+            rewriteQueryToMv(self, function(err) {
+                next(err);
+            });
+            showLog("Prehook | End");
+            next();
           } else {
             showLog('NOT Exist MV');
             showLog("Prehook | End");
             next();
           }
-        })
-        .then(res => {
-          // クエリをmvに書き換え
-          rewriteQueryToMv(self, function(err) {
-            next(err);
-          });
-          showLog("Prehook | End");
-          next();
         });
       }
     } catch (err) {
@@ -122,17 +120,6 @@ Object.keys(schemaList).forEach(function(value) {
     }
   });
 });
-
-// モデル定義
-let modelList = {},
-mvModelList = {},
-logModelList = {};
-modelBilder(schemaList, modelList);
-modelBilder(mvSchemaList, mvModelList, true);
-modelBilder(logSchemaList, logModelList);
-
-db.on('error', console.error.bind(console, 'connection error:'));
-showLog('[Process Start]');
 
 // ポストフックの定義 ======================
 Object.keys(schemaList).forEach(function(value) {
@@ -154,15 +141,26 @@ Object.keys(schemaList).forEach(function(value) {
 });
 // ==================================
 
+// モデル定義
+let modelList = {},
+mvModelList = {},
+logModelList = {};
+modelBilder(schemaList, modelList);
+modelBilder(mvSchemaList, mvModelList, true);
+modelBilder(logSchemaList, logModelList);
+
+db.on('error', console.error.bind(console, 'connection error:'));
+showLog('[Process Start]');
+
 // クエリ ============================
-modelList['Story'].
-findOne({ title: 'Sotsuken' }).
-populate(['author', 'fans']).
-exec(function (err, story) {
-  if (err) return console.log(err);
-  showLog('クエリ結果');
-  console.log(story);
-});
+// modelList['Story'].
+// findOne({ title: 'Sotsuken' }).
+// populate(['author', 'fans']).
+// exec(function (err, story) {
+//   if (err) return console.log(err);
+//   showLog('クエリ結果');
+//   console.log(story);
+// });
 
 // modelList['Person'].
 // findOne({ name: 'takagi' }).
