@@ -18,7 +18,7 @@ var server = app.listen(3000, function(){
 });
 
 app.get("/", function(req, res, next){
-  res.json({"code": "200", "message": "Server Runnning.", "serverTime": lib.getNowTIme()});
+  res.json({"code": "200", "message": "Server Runnning.", "serverTime": new Date()});
 });
 
 app.post("/findOne", function(req, res, next){
@@ -55,4 +55,14 @@ app.post("/createMv", function(req, res, next){
   console.log(req.body);
   main.createMvDocument(req.body.model_name, req.body.populate, req.body.id_array);
   res.json({"code": "300"});
+});
+
+app.post("/judgeCreateMv", function(req, res, next){
+  req.body.method = "judgeCreateMv";
+  console.log(req.body);
+  main.judgeCreateMv(function(err, docs){
+    if(err) res.json(err);
+    docs.code = 200;
+    res.json(docs);
+  });
 });

@@ -2,7 +2,8 @@ const mongoose = require('mongoose'),
 utils = require('mongoose-utils/node_modules/mongoose/lib/utils'),
 { PerformanceObserver, performance } = require('perf_hooks'),
 co = require('co'),
-lib = require('./../lib');
+lib = require('./../lib'),
+env = require('./../env');
 const showLog = lib.showLog,
 completeAssign = lib.completeAssign,
 getSchemaName = lib.getSchemaName,
@@ -100,12 +101,12 @@ Object.keys(schemaList).forEach(function(value) {
         populate = Object.keys(self._mongooseOptions.populate);
         // MVログが存在するかでMV化されているか判定する
         logModelList['Mvlog'].countDocuments({original_model: modelName, original_coll: collectionName, populate: populate}, function(err, count) {
-          if (err) {console.log(err); return false;}
+          if (err) return console.log(err);
           if (count === 1) {
             showLog('Exist MV.', preTime);
             // クエリをmvに書き換え
             rewriteQueryToMv(self, function(err) {
-                next(err);
+              next(err);
             });
             showLog("Prehook | End", preTime);
             next();
@@ -129,7 +130,7 @@ Object.keys(schemaList).forEach(function(value) {
       showLog("Prehook | Start", preTime);
       showLog("Prehook | End", preTime);
       next();
-      } catch (err) {
+    } catch (err) {
       next(err);
     }
   });
@@ -349,51 +350,71 @@ function modelBilder(schemaObjects, modelObjects, is_mv = false) {
   });
 }
 
+// MVの作成
+let createMvDocument = function createMvDocument(modelName, populate, document_id) {
+  let okCount=0, matchedCount=0, modifiedCount=0, upsertedCount=0;
+  let collectionName = utils.toCollectionName(modelName);
+  modelList[modelName].
+  find({ _id: document_id }).
+  populate(populate).
+  exec(function (err, mvDocuments) {
+    if (err) return console.log(err);
+    // promise all 後に処理 & co then 後に処理
+    const mvSavePromises =  Object.keys(mvDocuments).map((value) => {
+      // ログ要素を追加
+      mvDocuments[value] = mvDocuments[value].toObject();
+      mvDocuments[value].log_populate = populate;
+      mvDocuments[value].log_updated_at = Date.now();
+      // mvをdbに保存
+      mvModelList[modelName].bulkWrite([
+        {
+          updateOne: {
+            filter: {_id: mvDocuments[value]._id},  // idで検索する
+            update: mvDocuments[value],  // 保存するobject
+            upsert: true,  // 存在しなかった場合新規作成する
+            setDefaultsOnInsert: true
+          }
+        }
+      ]).then(res => {
+        showLog('createMvDocument | id: ' + mvDocuments[value]._id +
+        ',ok:' + res.result.ok + ', matchedCount:' + res.matchedCount +
+        ',modifiedCount:' + res.modifiedCount + ', upsertedCount:' +
+        res.upsertedCount, preTime);
+        // MVログを記載
+        createMvLog(modelName, collectionName, populate);
+      });
+    });
+    co(function *(){
+      Promise.all(mvSavePromises).then(() => {
+        // something
+      });
+    }).then(() => {
+      // somthing
+    });
+  });
+}
+
+// MV作成判断
+let judgeCreateMv = function judgeCreateMv(callback) {
+  // ユーザーログの読み込み
+  var aggregate =  logModelList['Userlog'].aggregate([{ $match: {
+    populate: { $exists: true, $ne: [] },
+    date: {
+      $lt: new Date(),
+      $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)}
+    }}]).
+    exec((err, docs) => {
+      console.log(docs);
+      callback(null, docs);
+    });
+};
+
+
 module.exports = {
   // モデル
   modelList: modelList,
-
   // MVの作成
-  createMvDocument: function createMvDocument(modelName, populate, document_id) {
-    let okCount=0, matchedCount=0, modifiedCount=0, upsertedCount=0;
-    let collectionName = utils.toCollectionName(modelName);
-    modelList[modelName].
-    find({ _id: document_id }).
-    populate(populate).
-    exec(function (err, mvDocuments) {
-      if (err) return console.log(err);
-      // promise all 後に処理 & co then 後に処理
-      const mvSavePromises =  Object.keys(mvDocuments).map((value) => {
-        // ログ要素を追加
-        mvDocuments[value] = mvDocuments[value].toObject();
-        mvDocuments[value].log_populate = populate;
-        mvDocuments[value].log_updated_at = Date.now();
-        // mvをdbに保存
-        mvModelList[modelName].bulkWrite([
-          {
-            updateOne: {
-              filter: {_id: mvDocuments[value]._id},  // idで検索する
-              update: mvDocuments[value],  // 保存するobject
-              upsert: true,  // 存在しなかった場合新規作成する
-              setDefaultsOnInsert: true
-            }
-          }
-        ]).then(res => {
-          showLog('createMvDocument | id: ' + mvDocuments[value]._id +
-          ',ok:' + res.result.ok + ', matchedCount:' + res.matchedCount +
-          ',modifiedCount:' + res.modifiedCount + ', upsertedCount:' +
-          res.upsertedCount, preTime);
-          // MVログを記載
-          createMvLog(modelName, collectionName, populate);
-        });
-      });
-      co(function *(){
-        Promise.all(mvSavePromises).then(() => {
-          // something
-        });
-      }).then(() => {
-        // somthing
-      });
-    });
-  }
+  createMvDocument: createMvDocument,
+  // MV作成判断
+  judgeCreateMv: judgeCreateMv
 };
