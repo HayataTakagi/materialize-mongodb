@@ -18,7 +18,7 @@ var Schema = mongoose.Schema;
 var ObjectId = Schema.Types.ObjectId,
 Mixed = Schema.Types.Mixed;
 
-var preTime, postTime;
+var preTime = performance.now(), postTime;
 
 const schemaSeeds = {
   "personSchema": {
@@ -85,13 +85,13 @@ schemaBilder(logSchemaSeeds, logSchemaList);
 Object.keys(schemaList).forEach(function(value) {
   schemaList[value].pre('findOne', function(next) {
     try {
-      showLog("Prehook | Start");
       preTime = performance.now();
+      showLog("Prehook | Start", preTime);
       var self = this;
 
       if (self._mongooseOptions.populate == null) {
         // populateがない
-        showLog("Prehook | End");
+        showLog("Prehook | End", preTime);
         next();
       } else {
         let modelName = self.model.modelName,
@@ -101,16 +101,16 @@ Object.keys(schemaList).forEach(function(value) {
         logModelList['Mvlog'].countDocuments({original_model: modelName, original_coll: collectionName, populate: populate}, function(err, count) {
           if (err) {console.log(err); return false;}
           if (count === 1) {
-            showLog('Exist MV.');
+            showLog('Exist MV.', preTime);
             // クエリをmvに書き換え
             rewriteQueryToMv(self, function(err) {
                 next(err);
             });
-            showLog("Prehook | End");
+            showLog("Prehook | End", preTime);
             next();
           } else {
-            showLog('NOT Exist MV');
-            showLog("Prehook | End");
+            showLog('NOT Exist MV', preTime);
+            showLog("Prehook | End", preTime);
             next();
           }
         });
@@ -125,14 +125,14 @@ Object.keys(schemaList).forEach(function(value) {
 Object.keys(schemaList).forEach(function(value) {
   schemaList[value].post('findOne', function(doc, next) {
     try {
-      showLog("Posthook | Start");
+      showLog("Posthook | Start", preTime);
       // 処理時間の計算
       postTime = performance.now();
       let elapsedTime = (postTime - preTime);
       // クエリログの表示
       let self = this;
       queryLog(elapsedTime, self);
-      showLog("Posthook | End");
+      showLog("Posthook | End", preTime);
       next();
     } catch (err) {
       next(err);
@@ -150,7 +150,7 @@ modelBilder(mvSchemaList, mvModelList, true);
 modelBilder(logSchemaList, logModelList);
 
 db.on('error', console.error.bind(console, 'connection error:'));
-showLog('[Process Start]');
+showLog('[Process Start]', preTime);
 
 // クエリ ============================
 // modelList['Story'].
@@ -158,7 +158,7 @@ showLog('[Process Start]');
 // populate(['author', 'fans']).
 // exec(function (err, story) {
 //   if (err) return console.log(err);
-//   showLog('クエリ結果');
+//   showLog('クエリ結果', preTime);
 //   console.log(story);
 // });
 
@@ -167,7 +167,7 @@ showLog('[Process Start]');
 // limit(1).
 // exec(function (err, person) {
 //   if (err) return console.log(err);
-//   showLog('クエリ結果');
+//   showLog('クエリ結果', preTime);
 //   console.log(person);
 // });
 
@@ -175,7 +175,7 @@ showLog('[Process Start]');
 // findOne({ title: 'Sotsuken_mv' }).
 // exec(function (err, story) {
 //   if (err) return console.log(err);
-//   showLog('クエリ結果');
+//   showLog('クエリ結果', preTime);
 //   console.log(story);
 // });
 // createMvDocument('Story', ['author', 'fans'], ['5c04f4b8b99d450ff1d8b4a4','5bfccb8286d08d1336bfd3b0']);
@@ -185,7 +185,7 @@ showLog('[Process Start]');
 
 // クエリログの取得
 function queryLog(elapsedTime, obj) {
-  showLog('クエリログ');
+  showLog('Writing Query Log', preTime);
   let saveObject = {
     elapsed_time: elapsedTime,
     options: obj.options,
@@ -230,7 +230,7 @@ function createMvDocument(modelName, populate, document_id) {
         showLog('createMvDocument | id: ' + mvDocuments[value]._id +
         ',ok:' + res.result.ok + ', matchedCount:' + res.matchedCount +
         ',modifiedCount:' + res.modifiedCount + ', upsertedCount:' +
-        res.upsertedCount);
+        res.upsertedCount, preTime);
         // MVログを記載
         createMvLog(modelName, collectionName, populate);
       });
@@ -279,7 +279,7 @@ function rewriteQueryToMv(query, callback) {
     query._collection.collection = db.collection(getMvCollectionName(collectionName));
     // populateオプションの除去
     query._mongooseOptions = "";
-    showLog('Finish rewrite Query To Mv');
+    showLog('Finish rewrite Query To Mv', preTime);
   } catch (err) {
     callback(err);
   }
@@ -303,7 +303,7 @@ function mvSchemaBilder(originalSeedObjects, mvSchemaObjects) {
     addLogSchemaToMv(mvSchemaSeeds[value]);
     // Seedからmvスキーマを作成
     mvSchemaObjects[value] = Schema(mvSchemaSeeds[value]);
-    showLog('mvSchemaBilder | ' + value + '\'s mv has created.');
+    showLog('mvSchemaBilder | ' + value + '\'s mv has created.', preTime);
   });
 }
 

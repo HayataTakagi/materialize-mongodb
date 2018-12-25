@@ -1,10 +1,10 @@
-const START_MS = new Date().getTime();
+const { PerformanceObserver, performance } = require('perf_hooks');
 
 module.exports = {
   // 経過時間,呼び出し元メソッド,メッセージをログ表示する
-  showLog: function showLog(msg) {
-    let now_time = new Date(),
-        elapsed_time = ((now_time.getTime() - START_MS) / 1000).toFixed(3);
+  showLog: function showLog(msg, startTime) {
+    let now_time = performance.now(),
+        elapsed_time = (now_time - startTime).toFixed(3);
     if (showLog.caller.name) {
       console.log('[' + getNowTime() + '|' + elapsed_time + ']'  + showLog.caller.name + ' | ' + msg);
     } else {
