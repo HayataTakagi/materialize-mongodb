@@ -1,7 +1,8 @@
 // // モデルの宣言
-const Model = require('./populate');
+const main = require('./populate');
 const express = require("express");
 const bodyParser = require('body-parser');
+const lib = require('./../lib');
 
 const app = express();
 
@@ -17,12 +18,13 @@ var server = app.listen(3000, function(){
 });
 
 app.get("/", function(req, res, next){
-  res.json({"code": "200", "message": "Server Runnning."});
+  res.json({"code": "200", "message": "Server Runnning.", "serverTime": lib.getNowTIme()});
 });
 
 app.post("/findOne", function(req, res, next){
+  req.body.method = "findeOne";
   console.log(req.body);
-  Model[req.body.model_name].
+  main.modelList[req.body.model_name].
   findOne(req.body.query).
   populate(req.body.populate).
   exec(function (err, doc) {
@@ -34,11 +36,23 @@ app.post("/findOne", function(req, res, next){
   });
 });
 
-app.get("/person", function(req, res, next){
-  Model['Person'].
-  findOne({ name: 'takagi' }).
-  exec(function (err, person) {
-    if (err) return console.log(err);
-    res.json(person);
+app.post("/updateOne", function(req, res, next){
+  req.body.method = "updateOne";
+  console.log(req.body);
+  main.modelList[req.body.model_name].
+  updateOne(req.body.query, req.body.document).
+  exec(function (err, doc) {
+    if (err) {
+      console.log(err);
+      res.send(err);
+    }
+    res.json(doc);
   });
+});
+
+app.post("/createMv", function(req, res, next){
+  req.body.method = "createMv";
+  console.log(req.body);
+  main.createMvDocument(req.body.model_name, req.body.populate, req.body.id_array);
+  res.json({"code": "300"});
 });

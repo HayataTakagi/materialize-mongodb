@@ -63,6 +63,7 @@ const logSchemaSeeds = {
     original_model: String,
     original_coll: String,
     populate: [ String ],
+    populateModel: [ String ],
     created_at: {type: Date, default: Date.now},
     updated_at: {type: Date, default: Date.now},
   },
@@ -121,6 +122,19 @@ Object.keys(schemaList).forEach(function(value) {
   });
 });
 
+Object.keys(schemaList).forEach(function(value) {
+  schemaList[value].pre('updateOne', function(next) {
+    try {
+      preTime = performance.now();
+      showLog("Prehook | Start", preTime);
+      showLog("Prehook | End", preTime);
+      next();
+      } catch (err) {
+      next(err);
+    }
+  });
+});
+
 // ポストフックの定義 ======================
 Object.keys(schemaList).forEach(function(value) {
   schemaList[value].post('findOne', function(doc, next) {
@@ -129,7 +143,29 @@ Object.keys(schemaList).forEach(function(value) {
       // 処理時間の計算
       postTime = performance.now();
       let elapsedTime = (postTime - preTime);
-      // クエリログの表示
+      // クエリログの保存
+      let self = this;
+      queryLog(elapsedTime, self);
+      showLog("Posthook | End", preTime);
+      next();
+    } catch (err) {
+      next(err);
+    }
+  });
+});
+
+Object.keys(schemaList).forEach(function(value) {
+  schemaList[value].post('updateOne', function(doc, next) {
+    try {
+      showLog("Posthook | Start", preTime);
+      // 処理時間の計算
+      if (doc.modifiedCount) {
+        // console.log('変更があった');
+
+      }
+      postTime = performance.now();
+      let elapsedTime = (postTime - preTime);
+      // クエリログの保存
       let self = this;
       queryLog(elapsedTime, self);
       showLog("Posthook | End", preTime);
@@ -183,7 +219,7 @@ showLog('[Process Start]', preTime);
 
 
 
-// クエリログの取得
+// クエリログの保存
 function queryLog(elapsedTime, obj) {
   showLog('Writing Query Log', preTime);
   let saveObject = {
@@ -201,56 +237,21 @@ function queryLog(elapsedTime, obj) {
   });
 }
 
-// MVの作成
-function createMvDocument(modelName, populate, document_id) {
-  let okCount=0, matchedCount=0, modifiedCount=0, upsertedCount=0;
-  let collectionName = utils.toCollectionName(modelName);
-  modelList[modelName].
-  find({ _id: document_id }).
-  populate(populate).
-  exec(function (err, mvDocuments) {
-    if (err) return console.log(err);
-    // promise all 後に処理 & co then 後に処理
-    const mvSavePromises =  Object.keys(mvDocuments).map((value) => {
-      // ログ要素を追加
-      mvDocuments[value] = mvDocuments[value].toObject();
-      mvDocuments[value].log_populate = populate;
-      mvDocuments[value].log_updated_at = Date.now();
-      // mvをdbに保存
-      mvModelList[modelName].bulkWrite([
-        {
-          updateOne: {
-            filter: {_id: mvDocuments[value]._id},  // idで検索する
-            update: mvDocuments[value],  // 保存するobject
-            upsert: true,  // 存在しなかった場合新規作成する
-            setDefaultsOnInsert: true
-          }
-        }
-      ]).then(res => {
-        showLog('createMvDocument | id: ' + mvDocuments[value]._id +
-        ',ok:' + res.result.ok + ', matchedCount:' + res.matchedCount +
-        ',modifiedCount:' + res.modifiedCount + ', upsertedCount:' +
-        res.upsertedCount, preTime);
-        // MVログを記載
-        createMvLog(modelName, collectionName, populate);
-      });
-    });
-    co(function *(){
-      Promise.all(mvSavePromises).then(() => {
-        // something
-      });
-    }).then(() => {
-      // somthing
-    });
-  });
-}
-
 // MVログの記録
 function createMvLog(modelName, collectionName, populate) {
+  // populate先のモデル名を取得する
+  var populateModel = [];
+  Object.keys(populate).forEach(value => {
+    if (Array.isArray(schemaSeeds[getSchemaName(modelName)][populate[value]])) {
+      populateModel.push(schemaSeeds[getSchemaName(modelName)][populate[value]][0].ref);
+    } else {
+      populateModel.push(schemaSeeds[getSchemaName(modelName)][populate[value]].ref);
+    }
+  });
   logModelList['Mvlog'].bulkWrite([
     {
       updateOne: {
-        filter: {original_model: modelName, original_coll: collectionName, populate: populate},  // 各値で検索
+        filter: {original_model: modelName, original_coll: collectionName, populate: populate, populateModel: populateModel},  // 各値で検索
         update: {updated_at: Date.now()},  // 更新日を更新
         upsert: true,  // 存在しなかった場合新規作成する
         setDefaultsOnInsert: true  // スキーマでdefaultで設定されている値を代入
@@ -348,4 +349,51 @@ function modelBilder(schemaObjects, modelObjects, is_mv = false) {
   });
 }
 
-module.exports = modelList;
+module.exports = {
+  // モデル
+  modelList: modelList,
+
+  // MVの作成
+  createMvDocument: function createMvDocument(modelName, populate, document_id) {
+    let okCount=0, matchedCount=0, modifiedCount=0, upsertedCount=0;
+    let collectionName = utils.toCollectionName(modelName);
+    modelList[modelName].
+    find({ _id: document_id }).
+    populate(populate).
+    exec(function (err, mvDocuments) {
+      if (err) return console.log(err);
+      // promise all 後に処理 & co then 後に処理
+      const mvSavePromises =  Object.keys(mvDocuments).map((value) => {
+        // ログ要素を追加
+        mvDocuments[value] = mvDocuments[value].toObject();
+        mvDocuments[value].log_populate = populate;
+        mvDocuments[value].log_updated_at = Date.now();
+        // mvをdbに保存
+        mvModelList[modelName].bulkWrite([
+          {
+            updateOne: {
+              filter: {_id: mvDocuments[value]._id},  // idで検索する
+              update: mvDocuments[value],  // 保存するobject
+              upsert: true,  // 存在しなかった場合新規作成する
+              setDefaultsOnInsert: true
+            }
+          }
+        ]).then(res => {
+          showLog('createMvDocument | id: ' + mvDocuments[value]._id +
+          ',ok:' + res.result.ok + ', matchedCount:' + res.matchedCount +
+          ',modifiedCount:' + res.modifiedCount + ', upsertedCount:' +
+          res.upsertedCount, preTime);
+          // MVログを記載
+          createMvLog(modelName, collectionName, populate);
+        });
+      });
+      co(function *(){
+        Promise.all(mvSavePromises).then(() => {
+          // something
+        });
+      }).then(() => {
+        // somthing
+      });
+    });
+  }
+};

@@ -75,6 +75,18 @@ module.exports = {
       root.pop();
       return;
     }
+  },
+
+  // 現在時刻をHH:mm:SS:ssで返す
+  getNowTIme: function getNowTime() {
+    let now_time = new Date(),
+        now_hour = now_time.getHours(),
+        now_minute = now_time.getMinutes(),
+        now_second = now_time.getSeconds(),
+        now_millisecond = now_time.getMilliseconds();
+    return ('0'+now_hour).slice(-2) + ':' + ('0'+now_minute).slice(-2) + ':' +
+    ('0'+now_second).slice(-2) + ':' + ('0'+now_millisecond).slice(-2);
+
   }
 };
 
