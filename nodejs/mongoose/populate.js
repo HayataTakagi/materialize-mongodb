@@ -2,14 +2,15 @@ const mongoose = require('mongoose'),
 utils = require('mongoose-utils/node_modules/mongoose/lib/utils'),
 { PerformanceObserver, performance } = require('perf_hooks'),
 co = require('co'),
-lib = require('./../lib'),
-env = require('./../env');
+lib = require('./../lib');
 const showLog = lib.showLog,
 completeAssign = lib.completeAssign,
 getSchemaName = lib.getSchemaName,
 getModelName = lib.getModelName,
 getMvCollectionName = lib.getMvCollectionName,
 getContext = lib.getContext;
+require('dotenv').config();
+const env = process.env;
 
 // Mngooseのバッファの設定
 mongoose.set('bufferCommands', true);
@@ -58,6 +59,7 @@ const logSchemaSeeds = {
     method: String,
     query: Mixed,
     populate: [ String ],
+    is_rewrited: Boolean,
     date: {type: Date, default: Date.now},
   }, "mvlogSchema": {
     _id: ObjectId,
@@ -145,6 +147,7 @@ Object.keys(schemaList).forEach(function(value) {
       postTime = performance.now();
       let elapsedTime = (postTime - preTime);
       // クエリログの保存
+      console.log(this._isRewritedQuery);
       let self = this;
       queryLog(elapsedTime, self);
       showLog("Posthook | End", preTime);
@@ -230,9 +233,11 @@ function queryLog(elapsedTime, obj) {
     method: obj.op,
     query: obj._conditions,
   };
-  if (obj._mongooseOptions.populate != null) {
-    saveObject.populate = Object.keys(obj._mongooseOptions.populate);
+  if (obj._mongooseOptions_ori.populate != null) {
+    saveObject.populate = Object.keys(obj._mongooseOptions_ori.populate);
   }
+  // クエリが書き換えられたかどうか
+  saveObject.is_rewrited = obj._isRewritedQuery ? 1 : 0;
   logModelList['Userlog'].insertMany(saveObject, function(err, docs) {
     if (err) return console.log(err);
   });
@@ -280,7 +285,10 @@ function rewriteQueryToMv(query, callback) {
     // コレクション情報書き換え
     query._collection.collection = db.collection(getMvCollectionName(collectionName));
     // populateオプションの除去
+    query._mongooseOptions_ori = query._mongooseOptions;
     query._mongooseOptions = "";
+    // クエリ書き換えのフラグを立てる
+    query._isRewritedQuery = true;
     showLog('Finish rewrite Query To Mv', preTime);
   } catch (err) {
     callback(err);
@@ -397,24 +405,32 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
 // MV作成判断
 let judgeCreateMv = function judgeCreateMv(callback) {
   // ユーザーログの読み込み
-  var aggregate =  logModelList['Userlog'].aggregate([{ $match: {
-    populate: { $exists: true, $ne: [] },
-    date: {
-      $lt: new Date(),
-      $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)}
-    }}]).
+  var aggregate =  logModelList['Userlog'].aggregate([
+    { $match: {
+      populate: { $exists: true, $ne: [] },
+      collection_name: { $in: ["stories"]}, // TODO: あとで消す
+      date: {
+        $lt: new Date(),
+        $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)}
+      }},
+      { $group: {
+        _id: {collection: "$collection_name", method: "$method", populate: "$populate"},
+        total_time: { $sum: "$elapsed_time"},
+        average_time: { $avg: "$elapsed_time"},
+        count: { $sum: 1}
+      }}
+    ]).
     exec((err, docs) => {
       console.log(docs);
       callback(null, docs);
     });
-};
+  };
 
-
-module.exports = {
-  // モデル
-  modelList: modelList,
-  // MVの作成
-  createMvDocument: createMvDocument,
-  // MV作成判断
-  judgeCreateMv: judgeCreateMv
-};
+  module.exports = {
+    // モデル
+    modelList: modelList,
+    // MVの作成
+    createMvDocument: createMvDocument,
+    // MV作成判断
+    judgeCreateMv: judgeCreateMv
+  };

@@ -6,3 +6,4 @@
 nodejs/node_modules/
 nodejs/mongoose/log
 nodejs/log/
+nodejs/.env

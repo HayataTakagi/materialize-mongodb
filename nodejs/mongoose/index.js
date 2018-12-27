@@ -3,6 +3,8 @@ const main = require('./populate');
 const express = require("express");
 const bodyParser = require('body-parser');
 const lib = require('./../lib');
+require('dotenv').config();
+const env = process.env;
 
 const app = express();
 
@@ -61,8 +63,12 @@ app.post("/judgeCreateMv", function(req, res, next){
   req.body.method = "judgeCreateMv";
   console.log(req.body);
   main.judgeCreateMv(function(err, docs){
-    if(err) res.json(err);
-    docs.code = 200;
+    Object.keys(docs).forEach((value) => {
+      if (docs[value].average_time > env.MV_CREATE_AVG) {
+        console.log('Long!' + docs[value]._id);
+      }
+    });
+    if (err) res.json(err);
     res.json(docs);
   });
 });

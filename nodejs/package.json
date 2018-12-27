@@ -5,6 +5,7 @@
   "main": "hello.js",
   "dependencies": {
     "co": "^4.6.0",
+    "dotenv": "^6.2.0",
     "ejs": "^2.6.1",
     "express": "^4.16.4",
     "fsevents": "^1.2.4",
@@ -20,8 +21,8 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon -L /vagrant/nodejs/mongoose/index.js"
+    "start": "nodemon -L /vagrant/nodejs/mongoose/index.js",
+    "mongo-start": "sudo mongod -quiet --logpath=/vagrant/nodejs/log/mongodb.log --logappend --dbpath=/var/lib/mongo"
   },
   "author": "",
   "license": "ISC"
