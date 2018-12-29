@@ -394,11 +394,11 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
       // ログ要素を追加
       mvDocuments[value] = mvDocuments[value].toObject();
       mvDocuments[value].log_populate = populate;
-      mvDocuments[value].log_updated_at = Date.now();
+      mvDocuments[value].log_updated_at = new Date();
       // mvをdbに保存
       mvModelList[modelName].bulkWrite([
         {
-          updateOne: {
+          replaceOne: {
             filter: {_id: mvDocuments[value]._id},  // idで検索する
             update: mvDocuments[value],  // 保存するobject
             upsert: true,  // 存在しなかった場合新規作成する
