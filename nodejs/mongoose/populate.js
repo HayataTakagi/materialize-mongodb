@@ -56,6 +56,7 @@ const logSchemaSeeds = {
     elapsed_time: Number,
     options: Mixed,
     collection_name: String,
+    model_name: String,
     method: String,
     query: Mixed,
     populate: [ String ],
@@ -98,6 +99,10 @@ Object.keys(schemaList).forEach(function(value) {
         showLog("Prehook | End", preTime);
         next();
       } else {
+        // クエリログの為に書き換えられる可能性のあるパラメーターを保存
+        self._mongooseOptions_ori = self._mongooseOptions;
+        self.modelName_ori = self.model.modelName;
+
         let modelName = self.model.modelName,
         collectionName = self.mongooseCollection.collectionName,
         populate = Object.keys(self._mongooseOptions.populate);
@@ -230,6 +235,7 @@ function queryLog(elapsedTime, obj) {
     elapsed_time: elapsedTime,
     options: obj.options,
     collection_name: obj.mongooseCollection.collection.s.name,
+    model_name: obj.modelName_ori,
     method: obj.op,
     query: obj._conditions,
   };
@@ -285,7 +291,6 @@ function rewriteQueryToMv(query, callback) {
     // コレクション情報書き換え
     query._collection.collection = db.collection(getMvCollectionName(collectionName));
     // populateオプションの除去
-    query._mongooseOptions_ori = query._mongooseOptions;
     query._mongooseOptions = "";
     // クエリ書き換えのフラグを立てる
     query._isRewritedQuery = true;
@@ -359,11 +364,15 @@ function modelBilder(schemaObjects, modelObjects, is_mv = false) {
 }
 
 // MVの作成
-let createMvDocument = function createMvDocument(modelName, populate, document_id) {
+let createMvDocument = function createMvDocument(modelName, populate, document_id=null) {
   let okCount=0, matchedCount=0, modifiedCount=0, upsertedCount=0;
   let collectionName = utils.toCollectionName(modelName);
+  var query = {};
+  if (document_id) {
+    query._id = document_id;
+  }
   modelList[modelName].
-  find({ _id: document_id }).
+  find(query).
   populate(populate).
   exec(function (err, mvDocuments) {
     if (err) return console.log(err);
@@ -404,25 +413,49 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
 
 // MV作成判断
 let judgeCreateMv = function judgeCreateMv(callback) {
+  preTime = performance.now();
+  showLog('Starting judgeCreateMv',preTime);
   // ユーザーログの読み込み
   var aggregate =  logModelList['Userlog'].aggregate([
     { $match: {
       populate: { $exists: true, $ne: [] },
-      collection_name: { $in: ["stories"]}, // TODO: あとで消す
       date: {
         $lt: new Date(),
         $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)}
       }},
       { $group: {
-        _id: {collection: "$collection_name", method: "$method", populate: "$populate"},
+        _id: {model_name: "$model_name", method: "$method", populate: "$populate"},
         total_time: { $sum: "$elapsed_time"},
         average_time: { $avg: "$elapsed_time"},
         count: { $sum: 1}
-      }}
+      }},
+      { $sort: { "_id.model_name": 1, "average_time": -1, "count": -1}}
     ]).
     exec((err, docs) => {
-      console.log(docs);
-      callback(null, docs);
+      // 処理平均時間が超えているクエリに関してコレクション毎に整理する
+      var userLogObject = {};
+      Object.keys(docs).forEach((value) => {
+        if (docs[value].average_time > env.MV_CREATE_AVG) {
+          // 処理平均時間が超えているクエリを選択
+          if (userLogObject[docs[value]._id.model_name] == null) {
+            // コレクション毎にarrayを作成
+            userLogObject[docs[value]._id.model_name] = [];
+          }
+          // コレクションarrayにpush
+          userLogObject[docs[value]._id.model_name].push(docs[value]);
+        }
+      });
+      showLog('Finish Cluclation About userLog' ,preTime);
+      console.log(userLogObject);
+      // 各コレクションの最重要項目のみMV化
+      Object.keys(userLogObject).forEach((value) => {
+        if (value != "undefined") {
+          let topUserLog = userLogObject[value][0]._id;
+          showLog(`Create MV (model_name: ${topUserLog.model_name}, populate: [${topUserLog.populate.join(',')}])`, preTime);
+          createMvDocument(topUserLog.model_name, topUserLog.populate);
+        }
+      });
+      callback(null, userLogObject);
     });
   };
 
