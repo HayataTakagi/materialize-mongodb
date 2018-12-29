@@ -253,7 +253,7 @@ function queryLog(elapsedTime, obj) {
 function createMvLog(modelName, collectionName, populate) {
   // populate先のモデル名を取得する
   var populateModel = [];
-  Object.keys(populate).forEach(value => {
+  Object.keys(populate).forEach((value) => {
     if (Array.isArray(schemaSeeds[getSchemaName(modelName)][populate[value]])) {
       populateModel.push(schemaSeeds[getSchemaName(modelName)][populate[value]][0].ref);
     } else {
@@ -363,6 +363,19 @@ function modelBilder(schemaObjects, modelObjects, is_mv = false) {
   });
 }
 
+// populate先がschemaで宣言されているか
+function checkPopulateAdequacy(modelName, populate) {
+  var returnObject = true;
+  Object.keys(populate).forEach((value) => {
+    if (!schemaSeeds[getSchemaName(modelName)].hasOwnProperty(populate[value])) {
+      returnObject = false;
+      showLog(`[WANING] Skiped ${modelName}-[${populate.join(',')}] Because ${modelName} has NOT ${populate[value]} in Schema.`, preTime);
+      return;
+    }
+  });
+  return returnObject;
+}
+
 // MVの作成
 let createMvDocument = function createMvDocument(modelName, populate, document_id=null) {
   let okCount=0, matchedCount=0, modifiedCount=0, upsertedCount=0;
@@ -450,9 +463,16 @@ let judgeCreateMv = function judgeCreateMv(callback) {
       // 各コレクションの最重要項目のみMV化
       Object.keys(userLogObject).forEach((value) => {
         if (value != "undefined") {
-          let topUserLog = userLogObject[value][0]._id;
-          showLog(`Create MV (model_name: ${topUserLog.model_name}, populate: [${topUserLog.populate.join(',')}])`, preTime);
-          createMvDocument(topUserLog.model_name, topUserLog.populate);
+          // 上位からpopulate先が存在するものがあるまでループを実行
+          userLogObject[value].some((logObject) => {
+            let topUserLog = logObject._id;
+            // populateの妥当性をチェック
+            if (checkPopulateAdequacy(topUserLog.model_name, topUserLog.populate)) {
+              showLog(`Create MV (model_name: ${topUserLog.model_name}, populate: [${topUserLog.populate.join(',')}])`, preTime);
+              createMvDocument(topUserLog.model_name, topUserLog.populate);
+              return true;  // ループ文(some)を抜ける
+            }
+          });
         }
       });
       callback(null, userLogObject);

@@ -63,11 +63,6 @@ app.post("/judgeCreateMv", function(req, res, next){
   req.body.method = "judgeCreateMv";
   console.log(req.body);
   main.judgeCreateMv(function(err, docs){
-    Object.keys(docs).forEach((value) => {
-      if (docs[value].average_time > env.MV_CREATE_AVG) {
-        console.log('Long!' + docs[value]._id);
-      }
-    });
     if (err) res.json(err);
     res.json(docs);
   });
