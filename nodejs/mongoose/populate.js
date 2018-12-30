@@ -20,20 +20,35 @@ var Schema = mongoose.Schema;
 var ObjectId = Schema.Types.ObjectId,
 Mixed = Schema.Types.Mixed;
 
-var preTime = performance.now(), postTime;
+// 経過時間用
+var preTime = performance.now(), preEndTime, postTime;
+// populate先モデルリスト
+var populateModelList = {};
 
 const schemaSeeds = {
   "personSchema": {
     _id: ObjectId,
     name: String,
     age: Number,
-    stories: [{ type: ObjectId, ref: 'Story' }]
+    stories: [{ type: ObjectId, ref: 'Story' }],
+    created_at: {type: Date, default: Date.now},
+    updated_at: {type: Date, default: Date.now},
   }, "storySchema": {
     _id: ObjectId,
     author: { type: ObjectId, ref: 'Person' },
     title: String,
-    fans: [{ type: ObjectId, ref: 'Person' }]
-  },
+    fans: [{ type: ObjectId, ref: 'Person' }],
+    created_at: {type: Date, default: Date.now},
+    updated_at: {type: Date, default: Date.now},
+  }, "commentSchema": {
+    _id: ObjectId,
+    speak: {
+      speaker: { type: ObjectId, ref: 'Person' },
+      comment: String
+    },
+    created_at: {type: Date, default: Date.now},
+    updated_at: {type: Date, default: Date.now},
+  }
 };
 
 let mvSchemaSeeds = {
@@ -41,13 +56,25 @@ let mvSchemaSeeds = {
     _id: ObjectId,
     name: String,
     age: Number,
-    stories: [{ type: ObjectId, ref: 'Story' }]
+    stories: [{ type: ObjectId, ref: 'Story' }],
+    created_at: {type: Date, default: Date.now},
+    updated_at: {type: Date, default: Date.now},
   }, "storySchema": {
     _id: ObjectId,
     author: { type: ObjectId, ref: 'Person' },
     title: String,
-    fans: [{ type: ObjectId, ref: 'Person' }]
-  },
+    fans: [{ type: ObjectId, ref: 'Person' }],
+    created_at: {type: Date, default: Date.now},
+    updated_at: {type: Date, default: Date.now},
+  }, "commentSchema": {
+    _id: ObjectId,
+    speak: {
+      speaker: { type: ObjectId, ref: 'Person' },
+      comment: String
+    },
+    created_at: {type: Date, default: Date.now},
+    updated_at: {type: Date, default: Date.now},
+  }
 };
 
 const logSchemaSeeds = {
@@ -67,7 +94,7 @@ const logSchemaSeeds = {
     original_model: String,
     original_coll: String,
     populate: [ String ],
-    populateModel: [ String ],
+    populate_model: [ String ],
     created_at: {type: Date, default: Date.now},
     updated_at: {type: Date, default: Date.now},
   },
@@ -90,13 +117,14 @@ schemaBilder(logSchemaSeeds, logSchemaList);
 Object.keys(schemaList).forEach(function(value) {
   schemaList[value].pre('findOne', function(next) {
     try {
-      preTime = performance.now();
+      preTime = performance.now();  // showLog用
       showLog("Prehook | Start", preTime);
       var self = this;
 
       if (self._mongooseOptions.populate == null) {
         // populateがない
         showLog("Prehook | End", preTime);
+        preEndTime = performance.now();  // クエリログ用
         next();
       } else {
         // クエリログの為に書き換えられる可能性のあるパラメーターを保存
@@ -113,18 +141,22 @@ Object.keys(schemaList).forEach(function(value) {
             showLog('Exist MV.', preTime);
             // クエリをmvに書き換え
             rewriteQueryToMv(self, function(err) {
+              preEndTime = performance.now();  // クエリログ用
               next(err);
             });
             showLog("Prehook | End", preTime);
+            preEndTime = performance.now();  // クエリログ用
             next();
           } else {
             showLog('NOT Exist MV', preTime);
             showLog("Prehook | End", preTime);
+            preEndTime = performance.now();  // クエリログ用
             next();
           }
         });
       }
     } catch (err) {
+      preEndTime = performance.now();  // クエリログ用
       next(err);
     }
   });
@@ -136,6 +168,7 @@ Object.keys(schemaList).forEach(function(value) {
       preTime = performance.now();
       showLog("Prehook | Start", preTime);
       showLog("Prehook | End", preTime);
+      preEndTime = performance.now();  // クエリログ用
       next();
     } catch (err) {
       next(err);
@@ -150,7 +183,7 @@ Object.keys(schemaList).forEach(function(value) {
       showLog("Posthook | Start", preTime);
       // 処理時間の計算
       postTime = performance.now();
-      let elapsedTime = (postTime - preTime);
+      let elapsedTime = (postTime - preEndTime);
       // クエリログの保存
       console.log(this._isRewritedQuery);
       let self = this;
@@ -170,10 +203,9 @@ Object.keys(schemaList).forEach(function(value) {
       // 処理時間の計算
       if (doc.modifiedCount) {
         // console.log('変更があった');
-
       }
       postTime = performance.now();
-      let elapsedTime = (postTime - preTime);
+      let elapsedTime = (postTime - preEndTime);
       // クエリログの保存
       let self = this;
       queryLog(elapsedTime, self);
@@ -239,7 +271,7 @@ function queryLog(elapsedTime, obj) {
     method: obj.op,
     query: obj._conditions,
   };
-  if (obj._mongooseOptions_ori.populate != null) {
+  if (obj.hasOwnProperty("_mongooseOptions_ori")) {
     saveObject.populate = Object.keys(obj._mongooseOptions_ori.populate);
   }
   // クエリが書き換えられたかどうか
@@ -254,17 +286,20 @@ function createMvLog(modelName, collectionName, populate) {
   // populate先のモデル名を取得する
   var populateModel = [];
   Object.keys(populate).forEach((value) => {
-    if (Array.isArray(schemaSeeds[getSchemaName(modelName)][populate[value]])) {
-      populateModel.push(schemaSeeds[getSchemaName(modelName)][populate[value]][0].ref);
-    } else {
-      populateModel.push(schemaSeeds[getSchemaName(modelName)][populate[value]].ref);
-    }
+    populateModel.push(populateModelList[populate[value]]);
   });
+  let saveObject = {
+    original_model: modelName,
+    original_coll: collectionName,
+    populate: populate,
+    populate_model: populateModel,
+    updated_at: new Date(),
+  };
   logModelList['Mvlog'].bulkWrite([
     {
       updateOne: {
-        filter: {original_model: modelName, original_coll: collectionName, populate: populate, populateModel: populateModel},  // 各値で検索
-        update: {updated_at: Date.now()},  // 更新日を更新
+        filter: {original_model: modelName},  // 各値で検索
+        update: saveObject,  // 更新日を更新
         upsert: true,  // 存在しなかった場合新規作成する
         setDefaultsOnInsert: true  // スキーマでdefaultで設定されている値を代入
       }
@@ -324,7 +359,7 @@ function mvSchemaBilder(originalSeedObjects, mvSchemaObjects) {
 
 // refがあるスキーマをref先のスキーマに置き換える
 // ref先のrefは置き換えない
-function replaceRefSchema(obj) {
+function replaceRefSchema(obj, parent='') {
   Object.keys(obj).forEach(function(value) {
 
     if (typeof obj[value] != "object") {
@@ -333,11 +368,19 @@ function replaceRefSchema(obj) {
     } else {
       if(obj[value].hasOwnProperty('ref')) {
         // 参照型の場合埋め込み型に書き換える
+        // populate先モデルリストに保存
+        if (Array.isArray(obj)) {
+          populateModelList[parent] = obj[value].ref;
+        } else {
+          let current = parent === '' ? value : `${parent}.${value}`;
+          populateModelList[current] = obj[value].ref;
+        }
         // mvschemaを自動生成した際ここでオリジナルのseedが書き換わってしまう
         obj[value] = completeAssign({}, schemaSeeds[getSchemaName(obj[value].ref)]);
       } else {
         // 探索を続ける
-        replaceRefSchema(obj[value]);
+        let next = parent === '' ? value : `${parent}.${value}`;
+        replaceRefSchema(obj[value], next);
       }
     }
   });
@@ -410,8 +453,6 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
         ',ok:' + res.result.ok + ', matchedCount:' + res.matchedCount +
         ',modifiedCount:' + res.modifiedCount + ', upsertedCount:' +
         res.upsertedCount, preTime);
-        // MVログを記載
-        createMvLog(modelName, collectionName, populate);
       });
     });
     co(function *(){
@@ -419,10 +460,11 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
         // something
       });
     }).then(() => {
-      // somthing
+      // MVログを記載
+      createMvLog(modelName, collectionName, populate);
     });
   });
-}
+};
 
 // MV作成判断
 let judgeCreateMv = function judgeCreateMv(callback) {
@@ -479,11 +521,51 @@ let judgeCreateMv = function judgeCreateMv(callback) {
     });
   };
 
+  // オリジナルコレクション&MV更新処理
+  let updateDocuments = function updateDocuments(modelName, query, update_document, callback) {
+    preTime = performance.now();
+    showLog('Starting updateDocuments' ,preTime);
+    let updated_ids = [];
+    modelList[modelName].
+    find(query).
+    exec(function (err, docs) {
+      if (err) {
+        console.log(err);
+        callback(err, null);
+      }
+      // オリジナルコレクションの更新
+      Object.keys(docs).forEach((value) => {
+        // updated_atを更新
+        if (!update_document.hasOwnProperty('updated_at')) {
+          update_document.updated_at = new Date();
+        }
+        // 更新処理
+        Object.assign(docs[value], update_document);
+        docs[value].save((err, doc) => {
+          if (err) {
+            console.log(err);
+            callback(err, null);
+          }
+          showLog(`Updated about \n${doc}` ,preTime);
+          // 更新したidを格納
+          updated_ids.push(doc._id);
+        });
+      });
+      // MVコレクションの更新
+      // TODO: updated_ids or docsに関するmvを更新するmethodを作成
+      callback(null, docs);
+    });
+  };
+
   module.exports = {
-    // モデル
+    // モデル本体
     modelList: modelList,
     // MVの作成
     createMvDocument: createMvDocument,
     // MV作成判断
-    judgeCreateMv: judgeCreateMv
+    judgeCreateMv: judgeCreateMv,
+    // オリジナル&MV更新処理
+    updateDocuments: updateDocuments,
+    // populateを検知したモデル
+    populateModelList: populateModelList
   };

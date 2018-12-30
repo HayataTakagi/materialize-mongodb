@@ -23,6 +23,29 @@ app.get("/", function(req, res, next){
   res.json({"code": "200", "message": "Server Runnning.", "serverTime": new Date()});
 });
 
+app.get("/getModelList", function(req, res, next){
+  let modelList_str = Object.keys(main.modelList).join(',');
+  res.json({"code": "200", "modelList": modelList_str, "populateModelList": main.populateModelList});
+});
+
+app.post("/insertMany", function(req, res, next){
+  req.body.method = "insertMany";
+  console.log(req.body);
+  if (!Array.isArray(req.body.document)) {
+    res.json({"code": "400", "message": "Document must be Array!"});
+    return;
+  }
+  main.modelList[req.body.model_name].
+  insertMany(req.body.document, (err, docs) => {
+    if (err) {
+      console.log(err);
+      res.send(err);
+      return;
+    }
+    res.json(docs);
+  });
+});
+
 app.post("/findOne", function(req, res, next){
   req.body.method = "findeOne";
   console.log(req.body);
@@ -38,18 +61,16 @@ app.post("/findOne", function(req, res, next){
   });
 });
 
-app.post("/updateOne", function(req, res, next){
-  req.body.method = "updateOne";
+app.post("/update", function(req, res, next){
+  req.body.method = "update";
   console.log(req.body);
-  main.modelList[req.body.model_name].
-  updateOne(req.body.query, req.body.document).
-  exec(function (err, doc) {
+  main.updateDocuments(req.body.model_name, req.body.query, req.body.document, function(err, docs) {
     if (err) {
       console.log(err);
       res.send(err);
     }
-    res.json(doc);
-  });
+    res.json(docs);
+  })
 });
 
 app.post("/createMv", function(req, res, next){
