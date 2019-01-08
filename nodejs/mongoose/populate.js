@@ -2,6 +2,7 @@ const mongoose = require('mongoose'),
 utils = require('mongoose-utils/node_modules/mongoose/lib/utils'),
 { PerformanceObserver, performance } = require('perf_hooks'),
 co = require('co'),
+__ = require('underscore'),
 lib = require('./../lib'),
 index = require('./index');
 const showLog = lib.showLog,
@@ -241,37 +242,6 @@ modelBilder(logSchemaList, logModelList);
 
 db.on('error', console.error.bind(console, 'connection error:'));
 showLog('[Process Start]', preTime);
-
-// クエリ ============================
-// modelList['Story'].
-// findOne({ title: 'Sotsuken' }).
-// populate(['author', 'fans']).
-// exec(function (err, story) {
-//   if (err) return console.log(err);
-//   showLog('クエリ結果', preTime);
-//   console.log(story);
-// });
-
-// modelList['Person'].
-// findOne({ name: 'takagi' }).
-// limit(1).
-// exec(function (err, person) {
-//   if (err) return console.log(err);
-//   showLog('クエリ結果', preTime);
-//   console.log(person);
-// });
-
-// mvModelList['Story'].
-// findOne({ title: 'Sotsuken_mv' }).
-// exec(function (err, story) {
-//   if (err) return console.log(err);
-//   showLog('クエリ結果', preTime);
-//   console.log(story);
-// });
-// createMvDocument('Story', ['author', 'fans'], ['5c04f4b8b99d450ff1d8b4a4','5bfccb8286d08d1336bfd3b0']);
-// ================================
-
-
 
 // クエリログの保存
 function queryLog(elapsedTime, obj) {
@@ -650,10 +620,10 @@ let judgeCreateMv = function judgeCreateMv(callback) {
   };
 
 // testの集計
-let aggregateTest = function aggregateTest(test_id, methodName, callback){
+let aggregateTest = function aggregateTest(testId, methodName, callback){
   logModelList['Userlog'].aggregate([
     { $match: {
-      test_id: test_id,
+      test_id: testId,
       method: methodName
     }},
     { $group: {
@@ -669,7 +639,25 @@ let aggregateTest = function aggregateTest(test_id, methodName, callback){
     console.log(docs);
     callback(null, docs);
   });
-}
+};
+
+// idによるfindOneのテスト
+let experimentById = function experimentById(testId, methodName, modelName, minId, maxId, populate, trials, callback) {
+  let id_array = Array.from({length: maxId-minId+1}, (v, k) => k + minId);
+  let query_array = __.sample(id_array, trials);
+  Object.keys(query_array).forEach(value => {
+    modelList[modelName].
+    findOne({_id: query_array[value]}).
+    populate(populate).
+    exec(function (err, doc) {
+      if (err) {
+        console.log(err);
+      }
+      return;
+    });
+  });
+  callback(null, query_array);
+};
 
 
   module.exports = {
@@ -683,6 +671,8 @@ let aggregateTest = function aggregateTest(test_id, methodName, callback){
     updateDocuments: updateDocuments,
     // populateを検知したモデル
     populateModelList: populateModelList,
-    // testの集計
+    // テストの集計
     aggregateTest: aggregateTest,
+    // idによるfindOneのテスト
+    experimentById: experimentById
   };

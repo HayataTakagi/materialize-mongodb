@@ -96,7 +96,7 @@ app.post("/judgeCreateMv", function(req, res, next){
   req.body.method = "judgeCreateMv";
   console.log(req.body);
   // test_idをグローバル変数として定義
-  if (req.body.test_id) global.test_id = req.body.test_id;
+  global.test_id = req.body.test_id;
   main.judgeCreateMv(function(err, docs){
     if (err) res.json(err);
     res.json(docs);
@@ -107,6 +107,24 @@ app.post("/aggregateTest", function(req, res, next){
   req.body.method = "aggregateTest";
   console.log(req.body);
   main.aggregateTest(req.body.test_id, req.body.method_name, function(err, docs){
+    if (err) res.json(err);
+    res.json(docs);
+  });
+});
+
+app.post("/experimentById", function(req, res, next){
+  req.body.method = "experiment";
+  console.log(req.body);
+  // test_idをグローバル変数として定義
+  global.test_id = req.body.test_id;
+  main.experimentById(req.body.test_id,
+    req.body.method_name,
+    req.body.model_name,
+    req.body.min_id,
+    req.body.max_id,
+    req.body.populate,
+    req.body.trials,
+    function(err, docs){
     if (err) res.json(err);
     res.json(docs);
   });
