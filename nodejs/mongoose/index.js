@@ -23,6 +23,10 @@ app.get("/", function(req, res, next){
   res.json({"code": "200", "message": "Server Runnning.", "serverTime": new Date()});
 });
 
+app.post("/test", function(req, res, next){
+  res.json({"code": "200"});
+});
+
 app.get("/getModelList", function(req, res, next){
   let modelList_str = Object.keys(main.modelList).join(',');
   res.json({"code": "200", "modelList": modelList_str, "populateModelList": main.populateModelList});
@@ -31,6 +35,8 @@ app.get("/getModelList", function(req, res, next){
 app.post("/insertMany", function(req, res, next){
   req.body.method = "insertMany";
   console.log(req.body);
+  // test_idをグローバル変数として定義
+  if (req.body.test_id) global.test_id = req.body.test_id;
   if (!Array.isArray(req.body.document)) {
     res.json({"code": "400", "message": "Document must be Array!"});
     return;
@@ -49,6 +55,8 @@ app.post("/insertMany", function(req, res, next){
 app.post("/findOne", function(req, res, next){
   req.body.method = "findeOne";
   console.log(req.body);
+  // test_idをグローバル変数として定義
+  global.test_id = req.body.test_id;
   main.modelList[req.body.model_name].
   findOne(req.body.query).
   populate(req.body.populate).
@@ -64,6 +72,8 @@ app.post("/findOne", function(req, res, next){
 app.post("/update", function(req, res, next){
   req.body.method = "update";
   console.log(req.body);
+  // test_idをグローバル変数として定義
+  if (req.body.test_id) global.test_id = req.body.test_id;
   main.updateDocuments(req.body.model_name, req.body.query, req.body.document, function(err, docs) {
     if (err) {
       console.log(err);
@@ -76,6 +86,8 @@ app.post("/update", function(req, res, next){
 app.post("/createMv", function(req, res, next){
   req.body.method = "createMv";
   console.log(req.body);
+  // test_idをグローバル変数として定義
+  global.test_id = req.body.test_id;
   main.createMvDocument(req.body.model_name, req.body.populate, req.body.id_array);
   res.json({"code": "300"});
 });
@@ -83,7 +95,18 @@ app.post("/createMv", function(req, res, next){
 app.post("/judgeCreateMv", function(req, res, next){
   req.body.method = "judgeCreateMv";
   console.log(req.body);
+  // test_idをグローバル変数として定義
+  if (req.body.test_id) global.test_id = req.body.test_id;
   main.judgeCreateMv(function(err, docs){
+    if (err) res.json(err);
+    res.json(docs);
+  });
+});
+
+app.post("/aggregateTest", function(req, res, next){
+  req.body.method = "aggregateTest";
+  console.log(req.body);
+  main.aggregateTest(req.body.test_id, req.body.method_name, function(err, docs){
     if (err) res.json(err);
     res.json(docs);
   });

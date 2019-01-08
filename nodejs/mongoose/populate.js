@@ -2,7 +2,8 @@ const mongoose = require('mongoose'),
 utils = require('mongoose-utils/node_modules/mongoose/lib/utils'),
 { PerformanceObserver, performance } = require('perf_hooks'),
 co = require('co'),
-lib = require('./../lib');
+lib = require('./../lib'),
+index = require('./index');
 const showLog = lib.showLog,
 completeAssign = lib.completeAssign,
 getSchemaName = lib.getSchemaName,
@@ -27,24 +28,24 @@ var populateModelList = {};
 
 const schemaSeeds = {
   "personSchema": {
-    _id: ObjectId,
+    _id: Number,
     name: String,
     age: Number,
-    stories: [{ type: ObjectId, ref: 'Story' }],
+    stories: [{ type: Number, ref: 'Story' }],
     created_at: {type: Date, default: Date.now},
     updated_at: {type: Date, default: Date.now},
   }, "storySchema": {
-    _id: ObjectId,
-    author: { type: ObjectId, ref: 'Person' },
+    _id: Number,
+    author: { type: Number, ref: 'Person' },
     title: String,
-    fans: [{ type: ObjectId, ref: 'Person' }],
-    comments : [{ type: ObjectId, ref: 'Comment' }],
+    fans: [{ type: Number, ref: 'Person' }],
+    comments : [{ type: Number, ref: 'Comment' }],
     created_at: {type: Date, default: Date.now},
     updated_at: {type: Date, default: Date.now},
   }, "commentSchema": {
-    _id: ObjectId,
+    _id: Number,
     speak: {
-      speaker: { type: ObjectId, ref: 'Person' },
+      speaker: { type: Number, ref: 'Person' },
       comment: String
     },
     created_at: {type: Date, default: Date.now},
@@ -54,24 +55,24 @@ const schemaSeeds = {
 
 let mvSchemaSeeds = {
   "personSchema": {
-    _id: ObjectId,
+    _id: Number,
     name: String,
     age: Number,
-    stories: [{ type: ObjectId, ref: 'Story' }],
+    stories: [{ type: Number, ref: 'Story' }],
     created_at: {type: Date, default: Date.now},
     updated_at: {type: Date, default: Date.now},
   }, "storySchema": {
-    _id: ObjectId,
-    author: { type: ObjectId, ref: 'Person' },
+    _id: Number,
+    author: { type: Number, ref: 'Person' },
     title: String,
-    fans: [{ type: ObjectId, ref: 'Person' }],
-    comments : [{ type: ObjectId, ref: 'Comment' }],
+    fans: [{ type: Number, ref: 'Person' }],
+    comments : [{ type: Number, ref: 'Comment' }],
     created_at: {type: Date, default: Date.now},
     updated_at: {type: Date, default: Date.now},
   }, "commentSchema": {
-    _id: ObjectId,
+    _id: Number,
     speak: {
-      speaker: { type: ObjectId, ref: 'Person' },
+      speaker: { type: Number, ref: 'Person' },
       comment: String
     },
     created_at: {type: Date, default: Date.now},
@@ -90,6 +91,7 @@ const logSchemaSeeds = {
     query: Mixed,
     populate: [ String ],
     is_rewrited: Boolean,
+    test_id: Number,
     date: {type: Date, default: Date.now},
   }, "mvlogSchema": {
     _id: ObjectId,
@@ -121,22 +123,24 @@ Object.keys(schemaList).forEach(function(value) {
     try {
       preTime = performance.now();  // showLog用
       showLog("Prehook | Start", preTime);
+      var self = this;
+      // クエリログの為に書き換えられる可能性のあるパラメーターを保存
+      self.modelName_ori = self.model.modelName;
+      if (self._mongooseOptions.populate != null) {
+        self._mongooseOptions_ori = self._mongooseOptions;
+      }
+
       if (env.IS_USE_MV != 1) {
         showLog("Prehook | \"IS_USE_MV\" is set FALSE", preTime);
         preEndTime = performance.now();  // クエリログ用
         next();
       } else {
-        var self = this;
-
         if (self._mongooseOptions.populate == null) {
           // populateがない
           showLog("Prehook | End", preTime);
           preEndTime = performance.now();  // クエリログ用
           next();
         } else {
-          // クエリログの為に書き換えられる可能性のあるパラメーターを保存
-          self._mongooseOptions_ori = self._mongooseOptions;
-          self.modelName_ori = self.model.modelName;
 
           let modelName = self.model.modelName,
           collectionName = self.mongooseCollection.collectionName,
@@ -192,6 +196,7 @@ Object.keys(schemaList).forEach(function(value) {
       // 処理時間の計算
       postTime = performance.now();
       let elapsedTime = (postTime - preEndTime);
+      showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]ms` ,preTime);
       // クエリログの保存
       let self = this;
       queryLog(elapsedTime, self);
@@ -213,6 +218,7 @@ Object.keys(schemaList).forEach(function(value) {
       }
       postTime = performance.now();
       let elapsedTime = (postTime - preEndTime);
+      showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]` ,preTime);
       // クエリログの保存
       let self = this;
       queryLog(elapsedTime, self);
@@ -280,6 +286,9 @@ function queryLog(elapsedTime, obj) {
   };
   if (obj.hasOwnProperty("_mongooseOptions_ori")) {
     saveObject.populate = Object.keys(obj._mongooseOptions_ori.populate);
+  }
+  if (global.test_id) {
+    saveObject.test_id = global.test_id;
   }
   // クエリが書き換えられたかどうか
   saveObject.is_rewrited = obj._isRewritedQuery ? 1 : 0;
@@ -554,7 +563,8 @@ let judgeCreateMv = function judgeCreateMv(callback) {
       date: {
         $lt: new Date(),
         $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)},
-      is_rewrited: false
+      is_rewrited: false,
+      method: "findOne"
       }},
       { $group: {
         _id: {model_name: "$model_name", method: "$method", populate: "$populate"},
@@ -639,6 +649,29 @@ let judgeCreateMv = function judgeCreateMv(callback) {
     });
   };
 
+// testの集計
+let aggregateTest = function aggregateTest(test_id, methodName, callback){
+  logModelList['Userlog'].aggregate([
+    { $match: {
+      test_id: test_id,
+      method: methodName
+    }},
+    { $group: {
+      _id: {model_name: "$model_name", method: "$method", populate: "$populate", is_rewrited: "$is_rewrited"},
+      total_time: { $sum: "$elapsed_time"},
+      average_time: { $avg: "$elapsed_time"},
+      count: { $sum: 1}
+    }},
+    { $sort: { "_id.model_name": 1, "average_time": -1, "count": -1}}
+  ]).
+  exec((err, docs) => {
+    if (err) callback(err, null);
+    console.log(docs);
+    callback(null, docs);
+  });
+}
+
+
   module.exports = {
     // モデル本体
     modelList: modelList,
@@ -649,5 +682,7 @@ let judgeCreateMv = function judgeCreateMv(callback) {
     // オリジナル&MV更新処理
     updateDocuments: updateDocuments,
     // populateを検知したモデル
-    populateModelList: populateModelList
+    populateModelList: populateModelList,
+    // testの集計
+    aggregateTest: aggregateTest,
   };
