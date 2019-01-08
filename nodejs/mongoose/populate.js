@@ -121,41 +121,47 @@ Object.keys(schemaList).forEach(function(value) {
     try {
       preTime = performance.now();  // showLog用
       showLog("Prehook | Start", preTime);
-      var self = this;
-
-      if (self._mongooseOptions.populate == null) {
-        // populateがない
-        showLog("Prehook | End", preTime);
+      if (env.IS_USE_MV != 1) {
+        showLog("Prehook | \"IS_USE_MV\" is set FALSE", preTime);
         preEndTime = performance.now();  // クエリログ用
         next();
       } else {
-        // クエリログの為に書き換えられる可能性のあるパラメーターを保存
-        self._mongooseOptions_ori = self._mongooseOptions;
-        self.modelName_ori = self.model.modelName;
+        var self = this;
 
-        let modelName = self.model.modelName,
-        collectionName = self.mongooseCollection.collectionName,
-        populate = Object.keys(self._mongooseOptions.populate);
-        // MVログが存在するかでMV化されているか判定する
-        logModelList['Mvlog'].countDocuments({original_model: modelName, original_coll: collectionName, populate: populate}, function(err, count) {
-          if (err) return console.log(err);
-          if (count === 1) {
-            showLog('Exist MV.', preTime);
-            // クエリをmvに書き換え
-            rewriteQueryToMv(self, function(err) {
+        if (self._mongooseOptions.populate == null) {
+          // populateがない
+          showLog("Prehook | End", preTime);
+          preEndTime = performance.now();  // クエリログ用
+          next();
+        } else {
+          // クエリログの為に書き換えられる可能性のあるパラメーターを保存
+          self._mongooseOptions_ori = self._mongooseOptions;
+          self.modelName_ori = self.model.modelName;
+
+          let modelName = self.model.modelName,
+          collectionName = self.mongooseCollection.collectionName,
+          populate = Object.keys(self._mongooseOptions.populate);
+          // MVログが存在するかでMV化されているか判定する
+          logModelList['Mvlog'].countDocuments({original_model: modelName, original_coll: collectionName, populate: populate}, function(err, count) {
+            if (err) return console.log(err);
+            if (count === 1) {
+              showLog('Exist MV.', preTime);
+              // クエリをmvに書き換え
+              rewriteQueryToMv(self, function(err) {
+                preEndTime = performance.now();  // クエリログ用
+                next(err);
+              });
+              showLog("Prehook | End", preTime);
               preEndTime = performance.now();  // クエリログ用
-              next(err);
-            });
-            showLog("Prehook | End", preTime);
-            preEndTime = performance.now();  // クエリログ用
-            next();
-          } else {
-            showLog('NOT Exist MV', preTime);
-            showLog("Prehook | End", preTime);
-            preEndTime = performance.now();  // クエリログ用
-            next();
-          }
-        });
+              next();
+            } else {
+              showLog('NOT Exist MV', preTime);
+              showLog("Prehook | End", preTime);
+              preEndTime = performance.now();  // クエリログ用
+              next();
+            }
+          });
+        }
       }
     } catch (err) {
       preEndTime = performance.now();  // クエリログ用
@@ -187,7 +193,6 @@ Object.keys(schemaList).forEach(function(value) {
       postTime = performance.now();
       let elapsedTime = (postTime - preEndTime);
       // クエリログの保存
-      console.log(this._isRewritedQuery);
       let self = this;
       queryLog(elapsedTime, self);
       showLog("Posthook | End", preTime);
@@ -548,7 +553,8 @@ let judgeCreateMv = function judgeCreateMv(callback) {
       populate: { $exists: true, $ne: [] },
       date: {
         $lt: new Date(),
-        $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)}
+        $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)},
+      is_rewrited: false
       }},
       { $group: {
         _id: {model_name: "$model_name", method: "$method", populate: "$populate"},
@@ -623,8 +629,12 @@ let judgeCreateMv = function judgeCreateMv(callback) {
           updated_ids.push(doc._id);
         });
       });
-      // オリジナルに関わるMVを更新
-      updateMvDocuments(docs, modelName, query, update_document);
+      if (env.IS_USE_MV != 1) {
+        showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", preTime);
+      } else {
+        // オリジナルに関わるMVを更新
+        updateMvDocuments(docs, modelName, query, update_document);
+      }
       callback(null, docs);
     });
   };
