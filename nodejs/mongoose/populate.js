@@ -38,6 +38,7 @@ const schemaSeeds = {
     author: { type: ObjectId, ref: 'Person' },
     title: String,
     fans: [{ type: ObjectId, ref: 'Person' }],
+    comments : [{ type: ObjectId, ref: 'Comment' }],
     created_at: {type: Date, default: Date.now},
     updated_at: {type: Date, default: Date.now},
   }, "commentSchema": {
@@ -64,6 +65,7 @@ let mvSchemaSeeds = {
     author: { type: ObjectId, ref: 'Person' },
     title: String,
     fans: [{ type: ObjectId, ref: 'Person' }],
+    comments : [{ type: ObjectId, ref: 'Comment' }],
     created_at: {type: Date, default: Date.now},
     updated_at: {type: Date, default: Date.now},
   }, "commentSchema": {
@@ -419,6 +421,79 @@ function checkPopulateAdequacy(modelName, populate) {
   return returnObject;
 }
 
+// mvを更新する
+async function updateMvDocuments(original_docs, modelName, query, update_document) {
+  // MVコレクションの更新
+  // MV更新処理(parent)
+  showLog("(PARENT-POPULATE)Start updating MvDocuments" ,preTime);
+  var doc_ids = Object.keys(original_docs).map((element) => {
+    return original_docs[element]._id;
+  });
+  logModelList['Mvlog'].find({original_model: modelName}, (err, docs) => {
+    if (err) {
+      console.log(err);
+      showLog('End updateDocuments' ,preTime);
+      callback(err, null);
+    }
+    // そのModel自体がMV化されている際に更新処理を行う
+    if (docs.length !== 1) {
+      showLog(`updateMvDocuments | (PARENT-POPULATE)NOT Updating ${modelName}'s MV collection BECAUSE ${modelName} doesn't have MV.` ,preTime);
+    } else {
+      showLog(`updateMvDocuments | (PARENT-POPULATE)Updating ${modelName}'s MV collection.`, preTime);
+      createMvDocument(modelName, docs[0].populate, doc_ids);
+    }
+  });
+
+  // MV更新処理(children)
+  showLog("(CHILDREN-POPULATE)Start updating MvDocuments" ,preTime);
+  logModelList['Mvlog'].find({populate_model: {$elemMatch:{$eq: modelName}}}, (err, docs) => {
+    if (err) {
+      console.log(err);
+      showLog('(CHILDREN-POPULATE)End updateDocuments BECAUSE Error' ,preTime);
+      callback(err, null);
+    }
+    if (docs.length < 1) {
+      showLog(`updateMvDocuments | (CHILDREN-POPULATE)NOT Updating populate-${modelName}'s MV collection BECAUSE populate-${modelName} doesn't have MV.` ,preTime);
+    } else {
+      showLog(`updateMvDocuments | (CHILDREN-POPULATE)Updating populate-${modelName}'s MV collection.`, preTime);
+      // そのModelがmv_populateとして埋め込まれている際に更新処理を行う
+      let toUpdateMv = {};
+      Object.keys(docs).forEach((value) => {
+        // populate_modelが更新されているModelと一致した際にpopulateをpushして保存する
+        Object.keys(docs[value].populate_model).forEach((key) => {
+          if (docs[value].populate_model[key] === modelName) {
+            if (!Array.isArray(toUpdateMv[docs[value].original_model])) {
+              toUpdateMv[docs[value].original_model] = [];
+            }
+            toUpdateMv[docs[value].original_model].push(docs[value].populate[key])
+          }
+        });
+      });
+      updateChildrenMv(toUpdateMv, doc_ids);
+    }
+  });
+}
+
+
+// populate先のMV更新
+function updateChildrenMv(toUpdateMv, doc_ids) {
+  Object.keys(toUpdateMv).forEach(modelName_key => {
+    Object.keys(toUpdateMv[modelName_key]).forEach(populate_key => {
+      let path = toUpdateMv[modelName_key][populate_key] + '._id';
+      let query = { [path]: {$in: doc_ids}};
+      mvModelList[modelName_key].find(query, (err, docs) => {
+        if (err) return console.log(err);
+        if (docs.length < 1) return;
+        var to_update_ids = Object.keys(docs).map((element) => {
+          return docs[element]._id;
+        });
+        showLog(`updateChildrenMv | (CHILDREN-POPULATE)Updating populate-MV ${to_update_ids.length} docs in ${modelName_key}`, preTime)
+        createMvDocument(modelName_key, docs[0].log_populate, to_update_ids);
+      });
+    });
+  });
+}
+
 // MVの作成
 let createMvDocument = function createMvDocument(modelName, populate, document_id=null) {
   let okCount=0, matchedCount=0, modifiedCount=0, upsertedCount=0;
@@ -449,10 +524,7 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
           }
         }
       ]).then(res => {
-        showLog('createMvDocument | id: ' + mvDocuments[value]._id +
-        ',ok:' + res.result.ok + ', matchedCount:' + res.matchedCount +
-        ',modifiedCount:' + res.modifiedCount + ', upsertedCount:' +
-        res.upsertedCount, preTime);
+        showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.result.ok}, matchedCount:${res.matchedCount}, modifiedCount:${res.modifiedCount}, upsertedCount:${res.upsertedCount}`, preTime);
       });
     });
     co(function *(){
@@ -546,13 +618,13 @@ let judgeCreateMv = function judgeCreateMv(callback) {
             console.log(err);
             callback(err, null);
           }
-          showLog(`Updated about \n${doc}` ,preTime);
+          showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}` ,preTime);
           // 更新したidを格納
           updated_ids.push(doc._id);
         });
       });
-      // MVコレクションの更新
-      // TODO: updated_ids or docsに関するmvを更新するmethodを作成
+      // オリジナルに関わるMVを更新
+      updateMvDocuments(docs, modelName, query, update_document);
       callback(null, docs);
     });
   };
