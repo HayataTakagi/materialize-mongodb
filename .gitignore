@@ -9,3 +9,13 @@ nodejs/log/
 nodejs/.env
 python/fixtures/makefixtures/__pycache__
 python/fixtures/components
+*.blg
+*.log
+*.toc
+*.dvi
+*.bbl
+*.orig
+*.aux
+*.gz
+*.fls
+*.fdb_latexmk
