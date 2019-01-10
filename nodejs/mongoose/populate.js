@@ -26,6 +26,8 @@ Mixed = Schema.Types.Mixed;
 var preTime = performance.now(), preEndTime, postTime;
 // populate先モデルリスト
 var populateModelList = {};
+// モデル別populate先リスト
+var populateListForModel = {};
 
 const schemaSeeds = {
   "personSchema": {
@@ -49,6 +51,13 @@ const schemaSeeds = {
       speaker: { type: Number, ref: 'Person' },
       comment: String
     },
+    story: { type: Number, ref: 'Story' },
+    created_at: {type: Date, default: Date.now},
+    updated_at: {type: Date, default: Date.now},
+  }, "weatherSchema": {
+    _id: Number,
+    weather: String,
+    date: Date,
     created_at: {type: Date, default: Date.now},
     updated_at: {type: Date, default: Date.now},
   }
@@ -76,6 +85,13 @@ let mvSchemaSeeds = {
       speaker: { type: Number, ref: 'Person' },
       comment: String
     },
+    story: { type: Number, ref: 'Story' },
+    created_at: {type: Date, default: Date.now},
+    updated_at: {type: Date, default: Date.now},
+  }, "weatherSchema": {
+    _id: Number,
+    weather: String,
+    date: Date,
     created_at: {type: Date, default: Date.now},
     updated_at: {type: Date, default: Date.now},
   }
@@ -108,10 +124,12 @@ const logSchemaSeeds = {
 // オリジナルスキーマの作成
 let schemaList = {};
 schemaBilder(schemaSeeds, schemaList);
+createPopulateListForModel(schemaSeeds);
 
 // mvスキーマの定義
-let mvSchemaList = {};
-mvSchemaBilder(schemaSeeds, mvSchemaList);
+let mvSchemaList = {},
+    ex1SchemaList = {};
+mvSchemaBilder(mvSchemaList, ex1SchemaList);
 
 // logスキーマの定義
 let logSchemaList = {};
@@ -235,9 +253,12 @@ Object.keys(schemaList).forEach(function(value) {
 // モデル定義
 let modelList = {},
 mvModelList = {},
+ex1ModelList = {},
 logModelList = {};
 modelBilder(schemaList, modelList);
 modelBilder(mvSchemaList, mvModelList, true);
+exModelBilder(ex1SchemaList, ex1ModelList, "ex1");
+
 modelBilder(logSchemaList, logModelList);
 
 db.on('error', console.error.bind(console, 'connection error:'));
@@ -329,23 +350,30 @@ function schemaBilder(seedObjects, schemaObjects) {
 }
 
 // 与えられたSeedsのMVスキーマを作成
-function mvSchemaBilder(originalSeedObjects, mvSchemaObjects) {
-  Object.keys(originalSeedObjects).forEach(function(value) {
-    // オリジナルSeedをハードコピー
-    // これを使用するとMaximum call stack size exceededが起こる
-    // mvSchemaSeeds[value] = completeAssign({}, originalSeedObjects[value]);
+function mvSchemaBilder(mvSchemaObjects, ex1SchemaObjects) {
+  Object.keys(mvSchemaSeeds).forEach(function(value) {
     // ref型のスキーマをembed型に変換
-    replaceRefSchema(mvSchemaSeeds[value]);
-    addLogSchemaToMv(mvSchemaSeeds[value]);
+    replaceRefSchema(mvSchemaSeeds[value], '', getModelName(value));
+    // ex1用のSchemaを作成
+    ex1SchemaObjects[value] = Schema(mvSchemaSeeds[value]);
     // Seedからmvスキーマを作成
+    addLogSchemaToMv(mvSchemaSeeds[value]);
     mvSchemaObjects[value] = Schema(mvSchemaSeeds[value]);
     showLog('mvSchemaBilder | ' + value + '\'s mv has created.', preTime);
   });
 }
 
+// populateListForModel用配列を準備
+function createPopulateListForModel(SeedObjects) {
+  Object.keys(SeedObjects).forEach(function(value) {
+    // populateListForModel用配列を準備
+    populateListForModel[getModelName(value)] = [];
+  });
+}
+
 // refがあるスキーマをref先のスキーマに置き換える
 // ref先のrefは置き換えない
-function replaceRefSchema(obj, parent='') {
+function replaceRefSchema(obj, parent='', root) {
   Object.keys(obj).forEach(function(value) {
 
     if (typeof obj[value] != "object") {
@@ -354,19 +382,21 @@ function replaceRefSchema(obj, parent='') {
     } else {
       if(obj[value].hasOwnProperty('ref')) {
         // 参照型の場合埋め込み型に書き換える
-        // populate先モデルリストに保存
+        // populate先モデルリストとモデル別populateリストに保存
         if (Array.isArray(obj)) {
           populateModelList[parent] = obj[value].ref;
+          populateListForModel[root].push(parent);
         } else {
           let current = parent === '' ? value : `${parent}.${value}`;
           populateModelList[current] = obj[value].ref;
+          populateListForModel[root].push(current);
         }
         // mvschemaを自動生成した際ここでオリジナルのseedが書き換わってしまう
         obj[value] = completeAssign({}, schemaSeeds[getSchemaName(obj[value].ref)]);
       } else {
         // 探索を続ける
         let next = parent === '' ? value : `${parent}.${value}`;
-        replaceRefSchema(obj[value], next);
+        replaceRefSchema(obj[value], next, root);
       }
     }
   });
@@ -389,6 +419,17 @@ function modelBilder(schemaObjects, modelObjects, is_mv = false) {
     } else {
       modelObjects[modelName] = mongoose.model(modelName, schemaObjects[value]);
     }
+  });
+}
+
+// 実験用モデル作成
+function exModelBilder(schemaObjects, modelObjects, exName) {
+  // 実験A => mvseedsを使ってmodel作成, insertManyでデータ挿入
+  // 実験B => originalを使う(IS_USE_MV=0)
+  // 実験C => 機構を用いる(IS_USE_MV=1)
+  Object.keys(schemaObjects).forEach(function(value) {
+    let modelName = getModelName(value);
+    modelObjects[modelName] = mongoose.model(exName + modelName, schemaObjects[value]);
   });
 }
 
@@ -533,8 +574,8 @@ let judgeCreateMv = function judgeCreateMv(callback) {
       date: {
         $lt: new Date(),
         $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)},
-      is_rewrited: false,
-      method: "findOne"
+        is_rewrited: false,
+        method: "findOne"
       }},
       { $group: {
         _id: {model_name: "$model_name", method: "$method", populate: "$populate"},
@@ -619,50 +660,77 @@ let judgeCreateMv = function judgeCreateMv(callback) {
     });
   };
 
-// testの集計
-let aggregateTest = function aggregateTest(testId, methodName, callback){
-  logModelList['Userlog'].aggregate([
-    { $match: {
-      test_id: testId,
-      method: methodName
-    }},
-    { $group: {
-      _id: {model_name: "$model_name", method: "$method", populate: "$populate", is_rewrited: "$is_rewrited"},
-      total_time: { $sum: "$elapsed_time"},
-      average_time: { $avg: "$elapsed_time"},
-      count: { $sum: 1}
-    }},
-    { $sort: { "_id.model_name": 1, "average_time": -1, "count": -1}}
-  ]).
-  exec((err, docs) => {
-    if (err) callback(err, null);
-    console.log(docs);
-    callback(null, docs);
-  });
-};
-
-// idによるfindOneのテスト
-let experimentById = function experimentById(testId, methodName, modelName, minId, maxId, populate, trials, callback) {
-  let id_array = Array.from({length: maxId-minId+1}, (v, k) => k + minId);
-  let query_array = __.sample(id_array, trials);
-  Object.keys(query_array).forEach(value => {
-    modelList[modelName].
-    findOne({_id: query_array[value]}).
-    populate(populate).
-    exec(function (err, doc) {
-      if (err) {
-        console.log(err);
-      }
-      return;
+  // testの集計
+  let aggregateTest = function aggregateTest(testId, methodName, callback){
+    logModelList['Userlog'].aggregate([
+      { $match: {
+        test_id: testId,
+        method: methodName
+      }},
+      { $group: {
+        _id: {model_name: "$model_name", method: "$method", populate: "$populate", is_rewrited: "$is_rewrited"},
+        total_time: { $sum: "$elapsed_time"},
+        average_time: { $avg: "$elapsed_time"},
+        count: { $sum: 1}
+      }},
+      { $sort: { "_id.model_name": 1, "average_time": -1, "count": -1}}
+    ]).
+    exec((err, docs) => {
+      if (err) callback(err, null);
+      console.log(docs);
+      callback(null, docs);
     });
-  });
-  callback(null, query_array);
-};
+  };
+
+  // idによるfindOneのテスト
+  let experimentById = function experimentById(testId, methodName, modelName, minId, maxId, populate, trials, callback) {
+    let id_array = Array.from({length: maxId-minId+1}, (v, k) => k + minId);
+    let query_array = __.sample(id_array, trials);
+    Object.keys(query_array).forEach(value => {
+      modelList[modelName].
+      findOne({_id: query_array[value]}).
+      populate(populate).
+      exec(function (err, doc) {
+        if (err) {
+          console.log(err);
+        }
+        return;
+      });
+    });
+    callback(null, query_array);
+  };
+
+  // ex1用コレクション作成
+  let createEx1Collection = function createEx1Collection(callback) {
+    preTime = performance.now();
+    showLog('Starting createEx1Collection' ,preTime);
+    Object.keys(populateListForModel).forEach(value => {
+      modelList[value].find().
+      populate(populateListForModel[value]).
+      exec((err, docs) => {
+        if (err) return console.log(err);
+        console.log(`Copying model:${value} populate:${populateListForModel[value]}`);
+        // 実験用コレクションに保存
+        ex1ModelList[value].insertMany(docs, (err, insertMany_docs) => {
+          if (err) return console.log(err);
+        });
+      });
+    });
+    callback(null, {"code": "ok"});
+
+
+  }
+
+  function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
 
 
   module.exports = {
     // モデル本体
     modelList: modelList,
+    // ex1モデル本体
+    ex1ModelList: ex1ModelList,
     // MVの作成
     createMvDocument: createMvDocument,
     // MV作成判断
@@ -671,8 +739,12 @@ let experimentById = function experimentById(testId, methodName, modelName, minI
     updateDocuments: updateDocuments,
     // populateを検知したモデル
     populateModelList: populateModelList,
+    // populate先をモデル別にリスト
+    populateListForModel: populateListForModel,
     // テストの集計
     aggregateTest: aggregateTest,
     // idによるfindOneのテスト
-    experimentById: experimentById
+    experimentById: experimentById,
+    // Ex1のコレクション作成
+    createEx1Collection: createEx1Collection
   };

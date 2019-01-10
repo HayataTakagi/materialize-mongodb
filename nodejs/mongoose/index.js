@@ -29,7 +29,8 @@ app.post("/test", function(req, res, next){
 
 app.get("/getModelList", function(req, res, next){
   let modelList_str = Object.keys(main.modelList).join(',');
-  res.json({"code": "200", "modelList": modelList_str, "populateModelList": main.populateModelList});
+  let ex1ModelList_str = Object.keys(main.ex1ModelList).join(',');
+  res.json({"code": "200", "modelList": modelList_str, "ex1ModelList": ex1ModelList_str,  "populateModelList": main.populateModelList, "populateListForModel": main.populateListForModel});
 });
 
 app.post("/insertMany", function(req, res, next){
@@ -125,6 +126,15 @@ app.post("/experimentById", function(req, res, next){
     req.body.populate,
     req.body.trials,
     function(err, docs){
+    if (err) res.json(err);
+    res.json(docs);
+  });
+});
+
+app.post("/createEx1Collection", function(req, res, next){
+  req.body.method = "createEx1Collection";
+  console.log(req.body);
+  main.createEx1Collection(function(err, docs){
     if (err) res.json(err);
     res.json(docs);
   });
