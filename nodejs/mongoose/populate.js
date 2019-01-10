@@ -539,18 +539,13 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
       mvDocuments[value].log_populate = populate;
       mvDocuments[value].log_updated_at = new Date();
       // mvをdbに保存
-      mvModelList[modelName].bulkWrite([
-        {
-          replaceOne: {
-            filter: {_id: mvDocuments[value]._id},  // idで検索する
-            update: mvDocuments[value],  // 保存するobject
-            upsert: true,  // 存在しなかった場合新規作成する
-            setDefaultsOnInsert: true
-          }
-        }
-      ]).then(res => {
-        showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.result.ok}, matchedCount:${res.matchedCount}, modifiedCount:${res.modifiedCount}, upsertedCount:${res.upsertedCount}`, preTime);
-      });
+      mvModelList[modelName].replaceOne(
+        {_id: mvDocuments[value]._id},  // idで検索する
+        mvDocuments[value],  // 保存するobject
+        {upsert: true, setDefaultsOnInsert: true},
+        (err, res) => {
+          showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}`, preTime);
+        });
     });
     co(function *(){
       Promise.all(mvSavePromises).then(() => {

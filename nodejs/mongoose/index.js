@@ -89,7 +89,7 @@ app.post("/update", function(req, res, next){
   req.body.method = "update";
   console.log(req.body);
   // test_idをグローバル変数として定義
-  if (req.body.test_id) global.test_id = req.body.test_id;
+  global.test_id = req.body.test_id;
   main.updateDocuments(req.body.model_name, req.body.query, req.body.document, function(err, docs) {
     if (err) {
       console.log(err);
