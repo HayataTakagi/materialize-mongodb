@@ -70,6 +70,21 @@ app.post("/findOne", function(req, res, next){
   });
 });
 
+app.post("/findOneTest", function(req, res, next){
+  req.body.method = "findeOneTest";
+  console.log(req.body);
+  // test_idをグローバル変数として定義
+  global.test_id = req.body.test_id;
+  main.findOneTest(req.body, (err, docs) => {
+    if (err) {
+        // console.log(err);
+        console.log("Error");
+        res.send(err);
+      }
+      res.json(docs);
+  });
+});
+
 app.post("/update", function(req, res, next){
   req.body.method = "update";
   console.log(req.body);

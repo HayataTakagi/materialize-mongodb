@@ -717,8 +717,36 @@ let judgeCreateMv = function judgeCreateMv(callback) {
       });
     });
     callback(null, {"code": "ok"});
+  }
 
-
+  // findOneテスト
+  let findOneTest = function findOneTest (body, callback) {
+    preTime = performance.now();
+    showLog('Starting createEx1Collection' ,preTime);
+    if (body.exName == "ex1") {
+      // 実験A
+      ex1ModelList[body.model_name].
+      findOne(body.query).
+      exec((err, doc) => {
+        if (err) {
+          console.log(err);
+          callback(err, null);
+        }
+        callback(null, doc);
+      });
+    } else {
+      // 実験A以外
+      modelList[body.model_name].
+      findOne(body.query).
+      populate(body.populate).
+      exec((err, doc) => {
+        if (err) {
+          console.log(err);
+          callback(err, null);
+        }
+        callback(null, doc);
+      });
+    }
   }
 
   function timeout(ms) {
@@ -746,5 +774,7 @@ let judgeCreateMv = function judgeCreateMv(callback) {
     // idによるfindOneのテスト
     experimentById: experimentById,
     // Ex1のコレクション作成
-    createEx1Collection: createEx1Collection
+    createEx1Collection: createEx1Collection,
+    // findOneテスト
+    findOneTest: findOneTest
   };
