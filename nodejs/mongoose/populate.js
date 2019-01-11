@@ -29,6 +29,12 @@ var populateModelList = {};
 // モデル別populate先リスト
 var populateListForModel = {};
 
+// ログレベル
+const topLog = 1,
+normalLog = 2,
+lowLog = 3,
+wasteLog = 4;
+
 const schemaSeeds = {
   "personSchema": {
     _id: Number,
@@ -141,7 +147,7 @@ Object.keys(schemaList).forEach(function(value) {
   schemaList[value].pre('findOne', function(next) {
     try {
       preTime = performance.now();  // showLog用
-      showLog("Prehook | Start", preTime);
+      showLog("Prehook | Start", preTime, wasteLog);
       var self = this;
       // クエリログの為に書き換えられる可能性のあるパラメーターを保存
       self.modelName_ori = self.model.modelName;
@@ -150,13 +156,13 @@ Object.keys(schemaList).forEach(function(value) {
       }
 
       if (env.IS_USE_MV != 1) {
-        showLog("Prehook | \"IS_USE_MV\" is set FALSE", preTime);
+        showLog("Prehook | \"IS_USE_MV\" is set FALSE", preTime, normalLog);
         preEndTime = performance.now();  // クエリログ用
         next();
       } else {
         if (self._mongooseOptions.populate == null) {
           // populateがない
-          showLog("Prehook | End", preTime);
+          showLog("Prehook | End", preTime, wasteLog);
           preEndTime = performance.now();  // クエリログ用
           next();
         } else {
@@ -168,18 +174,18 @@ Object.keys(schemaList).forEach(function(value) {
           logModelList['Mvlog'].countDocuments({original_model: modelName, original_coll: collectionName, populate: populate}, function(err, count) {
             if (err) return console.log(err);
             if (count === 1) {
-              showLog('Exist MV.', preTime);
+              showLog('Exist MV.', preTime, lowLog);
               // クエリをmvに書き換え
               rewriteQueryToMv(self, function(err) {
                 preEndTime = performance.now();  // クエリログ用
                 next(err);
               });
-              showLog("Prehook | End", preTime);
+              showLog("Prehook | End", preTime, wasteLog);
               preEndTime = performance.now();  // クエリログ用
               next();
             } else {
-              showLog('NOT Exist MV', preTime);
-              showLog("Prehook | End", preTime);
+              showLog('NOT Exist MV', preTime, lowLog);
+              showLog("Prehook | End", preTime, wasteLog);
               preEndTime = performance.now();  // クエリログ用
               next();
             }
@@ -197,8 +203,8 @@ Object.keys(schemaList).forEach(function(value) {
   schemaList[value].pre('updateOne', function(next) {
     try {
       preTime = performance.now();
-      showLog("Prehook | Start", preTime);
-      showLog("Prehook | End", preTime);
+      showLog("Prehook | Start", preTime, wasteLog);
+      showLog("Prehook | End", preTime, wasteLog);
       preEndTime = performance.now();  // クエリログ用
       next();
     } catch (err) {
@@ -211,15 +217,15 @@ Object.keys(schemaList).forEach(function(value) {
 Object.keys(schemaList).forEach(function(value) {
   schemaList[value].post('findOne', function(doc, next) {
     try {
-      showLog("Posthook | Start", preTime);
+      showLog("Posthook | Start", preTime, wasteLog);
       // 処理時間の計算
       postTime = performance.now();
       let elapsedTime = (postTime - preEndTime);
-      showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]ms` ,preTime);
+      showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]ms` ,preTime, normalLog);
       // クエリログの保存
       let self = this;
       queryLog(elapsedTime, self);
-      showLog("Posthook | End", preTime);
+      showLog("Posthook | End", preTime, wasteLog);
       next();
     } catch (err) {
       next(err);
@@ -230,18 +236,18 @@ Object.keys(schemaList).forEach(function(value) {
 Object.keys(schemaList).forEach(function(value) {
   schemaList[value].post('updateOne', function(doc, next) {
     try {
-      showLog("Posthook | Start", preTime);
+      showLog("Posthook | Start", preTime, wasteLog);
       // 処理時間の計算
       if (doc.modifiedCount) {
         // console.log('変更があった');
       }
       postTime = performance.now();
       let elapsedTime = (postTime - preEndTime);
-      showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]` ,preTime);
+      showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]` ,preTime, normalLog);
       // クエリログの保存
       let self = this;
       queryLog(elapsedTime, self);
-      showLog("Posthook | End", preTime);
+      showLog("Posthook | End", preTime, wasteLog);
       next();
     } catch (err) {
       next(err);
@@ -262,11 +268,11 @@ exModelBilder(ex1SchemaList, ex1ModelList, "ex1");
 modelBilder(logSchemaList, logModelList);
 
 db.on('error', console.error.bind(console, 'connection error:'));
-showLog('[Process Start]', preTime);
+showLog('[Process Start]', preTime, topLog);
 
 // クエリログの保存
 function queryLog(elapsedTime, obj) {
-  showLog('Writing Query Log', preTime);
+  showLog('Writing Query Log', preTime, wasteLog);
   let saveObject = {
     elapsed_time: elapsedTime,
     options: obj.options,
@@ -336,7 +342,7 @@ function rewriteQueryToMv(query, callback) {
     query._mongooseOptions = "";
     // クエリ書き換えのフラグを立てる
     query._isRewritedQuery = true;
-    showLog('Finish rewrite Query To Mv', preTime);
+    showLog('Finish rewrite Query To Mv', preTime, normalLog);
   } catch (err) {
     callback(err);
   }
@@ -359,7 +365,7 @@ function mvSchemaBilder(mvSchemaObjects, ex1SchemaObjects) {
     // Seedからmvスキーマを作成
     addLogSchemaToMv(mvSchemaSeeds[value]);
     mvSchemaObjects[value] = Schema(mvSchemaSeeds[value]);
-    showLog('mvSchemaBilder | ' + value + '\'s mv has created.', preTime);
+    showLog('mvSchemaBilder | ' + value + '\'s mv has created.', preTime, topLog);
   });
 }
 
@@ -439,7 +445,7 @@ function checkPopulateAdequacy(modelName, populate) {
   Object.keys(populate).forEach((value) => {
     if (!schemaSeeds[getSchemaName(modelName)].hasOwnProperty(populate[value])) {
       returnObject = false;
-      showLog(`[WANING] Skiped ${modelName}-[${populate.join(',')}] Because ${modelName} has NOT ${populate[value]} in Schema.`, preTime);
+      showLog(`[WANING] Skiped ${modelName}-[${populate.join(',')}] Because ${modelName} has NOT ${populate[value]} in Schema.`, preTime, topLog);
       return;
     }
   });
@@ -450,37 +456,37 @@ function checkPopulateAdequacy(modelName, populate) {
 async function updateMvDocuments(original_docs, modelName, query, update_document) {
   // MVコレクションの更新
   // MV更新処理(parent)
-  showLog("(PARENT-POPULATE)Start updating MvDocuments" ,preTime);
+  showLog("(PARENT-POPULATE)Start updating MvDocuments" ,preTime, normalLog);
   var doc_ids = Object.keys(original_docs).map((element) => {
     return original_docs[element]._id;
   });
   logModelList['Mvlog'].find({original_model: modelName}, (err, docs) => {
     if (err) {
       console.log(err);
-      showLog('End updateDocuments' ,preTime);
+      showLog('End updateDocuments' ,preTime, lowLog);
       callback(err, null);
     }
     // そのModel自体がMV化されている際に更新処理を行う
     if (docs.length !== 1) {
-      showLog(`updateMvDocuments | (PARENT-POPULATE)NOT Updating ${modelName}'s MV collection BECAUSE ${modelName} doesn't have MV.` ,preTime);
+      showLog(`updateMvDocuments | (PARENT-POPULATE)NOT Updating ${modelName}'s MV collection BECAUSE ${modelName} doesn't have MV.` ,preTime, normalLog);
     } else {
-      showLog(`updateMvDocuments | (PARENT-POPULATE)Updating ${modelName}'s MV collection.`, preTime);
+      showLog(`updateMvDocuments | (PARENT-POPULATE)Updating ${modelName}'s MV collection.`, preTime, normalLog);
       createMvDocument(modelName, docs[0].populate, doc_ids);
     }
   });
 
   // MV更新処理(children)
-  showLog("(CHILDREN-POPULATE)Start updating MvDocuments" ,preTime);
+  showLog("(CHILDREN-POPULATE)Start updating MvDocuments" ,preTime, normalLog);
   logModelList['Mvlog'].find({populate_model: {$elemMatch:{$eq: modelName}}}, (err, docs) => {
     if (err) {
       console.log(err);
-      showLog('(CHILDREN-POPULATE)End updateDocuments BECAUSE Error' ,preTime);
+      showLog('(CHILDREN-POPULATE)End updateDocuments BECAUSE Error' ,preTime, topLog);
       callback(err, null);
     }
     if (docs.length < 1) {
-      showLog(`updateMvDocuments | (CHILDREN-POPULATE)NOT Updating populate-${modelName}'s MV collection BECAUSE populate-${modelName} doesn't have MV.` ,preTime);
+      showLog(`updateMvDocuments | (CHILDREN-POPULATE)NOT Updating populate-${modelName}'s MV collection BECAUSE populate-${modelName} doesn't have MV.` ,preTime, lowLog);
     } else {
-      showLog(`updateMvDocuments | (CHILDREN-POPULATE)Updating populate-${modelName}'s MV collection.`, preTime);
+      showLog(`updateMvDocuments | (CHILDREN-POPULATE)Updating populate-${modelName}'s MV collection.`, preTime, lowLog);
       // そのModelがmv_populateとして埋め込まれている際に更新処理を行う
       let toUpdateMv = {};
       Object.keys(docs).forEach((value) => {
@@ -512,7 +518,7 @@ function updateChildrenMv(toUpdateMv, doc_ids) {
         var to_update_ids = Object.keys(docs).map((element) => {
           return docs[element]._id;
         });
-        showLog(`updateChildrenMv | (CHILDREN-POPULATE)Updating populate-MV ${to_update_ids.length} docs in ${modelName_key}`, preTime)
+        showLog(`updateChildrenMv | (CHILDREN-POPULATE)Updating populate-MV ${to_update_ids.length} docs in ${modelName_key}`, preTime, lowLog)
         createMvDocument(modelName_key, docs[0].log_populate, to_update_ids);
       });
     });
@@ -526,6 +532,9 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
   var query = {};
   if (document_id) {
     query._id = document_id;
+    var logLev = normalLog;
+  } else {
+    var logLev = lowLog;
   }
   modelList[modelName].
   find(query).
@@ -544,7 +553,7 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
         mvDocuments[value],  // 保存するobject
         {upsert: true, setDefaultsOnInsert: true},
         (err, res) => {
-          showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}`, preTime);
+          showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}`, preTime, logLev);
         });
     });
     co(function *(){
@@ -561,7 +570,7 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
 // MV作成判断
 let judgeCreateMv = function judgeCreateMv(callback) {
   preTime = performance.now();
-  showLog('Starting judgeCreateMv',preTime);
+  showLog('Starting judgeCreateMv',preTime, topLog);
   // ユーザーログの読み込み
   var aggregate =  logModelList['Userlog'].aggregate([
     { $match: {
@@ -594,7 +603,7 @@ let judgeCreateMv = function judgeCreateMv(callback) {
           userLogObject[docs[value]._id.model_name].push(docs[value]);
         }
       });
-      showLog('Finish Cluclation About userLog' ,preTime);
+      showLog('Finish Cluclation About userLog' , preTime, topLog);
       console.log(userLogObject);
       // 各コレクションの最重要項目のみMV化
       Object.keys(userLogObject).forEach((value) => {
@@ -604,7 +613,7 @@ let judgeCreateMv = function judgeCreateMv(callback) {
             let topUserLog = logObject._id;
             // populateの妥当性をチェック
             if (checkPopulateAdequacy(topUserLog.model_name, topUserLog.populate)) {
-              showLog(`Create MV (model_name: ${topUserLog.model_name}, populate: [${topUserLog.populate.join(',')}])`, preTime);
+              showLog(`Create MV (model_name: ${topUserLog.model_name}, populate: [${topUserLog.populate.join(',')}])`, preTime, topLog);
               createMvDocument(topUserLog.model_name, topUserLog.populate);
               return true;  // ループ文(some)を抜ける
             }
@@ -618,7 +627,7 @@ let judgeCreateMv = function judgeCreateMv(callback) {
   // オリジナルコレクション&MV更新処理
   let updateDocuments = function updateDocuments(modelName, query, update_document, callback) {
     preTime = performance.now();
-    showLog('Starting updateDocuments' ,preTime);
+    showLog('Starting updateDocuments' ,preTime, topLog);
     let updated_ids = [];
     modelList[modelName].
     find(query).
@@ -640,13 +649,13 @@ let judgeCreateMv = function judgeCreateMv(callback) {
             console.log(err);
             callback(err, null);
           }
-          showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}` ,preTime);
+          showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, preTime, normalLog);
           // 更新したidを格納
           updated_ids.push(doc._id);
         });
       });
       if (env.IS_USE_MV != 1) {
-        showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", preTime);
+        showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", preTime, lowLog);
       } else {
         // オリジナルに関わるMVを更新
         updateMvDocuments(docs, modelName, query, update_document);
@@ -698,13 +707,13 @@ let judgeCreateMv = function judgeCreateMv(callback) {
   // ex1用コレクション作成
   let createEx1Collection = function createEx1Collection(callback) {
     preTime = performance.now();
-    showLog('Starting createEx1Collection' ,preTime);
+    showLog('Starting createEx1Collection' ,preTime, topLog);
     Object.keys(populateListForModel).forEach(value => {
       modelList[value].find().
       populate(populateListForModel[value]).
       exec((err, docs) => {
         if (err) return console.log(err);
-        console.log(`Copying model:${value} populate:${populateListForModel[value]}`);
+        showLog(`Copying model:${value} populate:${populateListForModel[value]}`, preTime, topLog);
         // 実験用コレクションに保存
         ex1ModelList[value].insertMany(docs, (err, insertMany_docs) => {
           if (err) return console.log(err);
@@ -717,7 +726,7 @@ let judgeCreateMv = function judgeCreateMv(callback) {
   // findOneテスト
   let findOneTest = function findOneTest (body, callback) {
     preTime = performance.now();
-    showLog('Starting createEx1Collection' ,preTime);
+    showLog('Starting createEx1Collection' ,preTime, topLog);
     if (body.exName == "ex1") {
       // 実験A
       ex1ModelList[body.model_name].

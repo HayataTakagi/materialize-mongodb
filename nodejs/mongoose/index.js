@@ -8,6 +8,12 @@ const env = process.env;
 
 const app = express();
 
+// ログレベル
+const topLog = 1,
+normalLog = 2,
+lowLog = 3,
+wasteLog = 4;
+
 // urlencodedとjsonは別々に初期化する
 app.use(bodyParser.urlencoded({
     extended: true
@@ -35,9 +41,10 @@ app.get("/getModelList", function(req, res, next){
 
 app.post("/insertMany", function(req, res, next){
   req.body.method = "insertMany";
-  console.log(req.body);
-  // test_idをグローバル変数として定義
-  if (req.body.test_id) global.test_id = req.body.test_id;
+  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
+  // test_idとlogLevelをグローバル変数として定義
+  global.test_id = req.body.test_id;
+  global.logLevel = req.body.logLevel;
   if (!Array.isArray(req.body.document)) {
     res.json({"code": "400", "message": "Document must be Array!"});
     return;
@@ -55,9 +62,10 @@ app.post("/insertMany", function(req, res, next){
 
 app.post("/findOne", function(req, res, next){
   req.body.method = "findeOne";
-  console.log(req.body);
-  // test_idをグローバル変数として定義
+  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
+  // test_idとlogLevelをグローバル変数として定義
   global.test_id = req.body.test_id;
+  global.logLevel = req.body.logLevel;
   main.modelList[req.body.model_name].
   findOne(req.body.query).
   populate(req.body.populate).
@@ -72,9 +80,10 @@ app.post("/findOne", function(req, res, next){
 
 app.post("/findOneTest", function(req, res, next){
   req.body.method = "findeOneTest";
-  console.log(req.body);
-  // test_idをグローバル変数として定義
+  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
+  // test_idとlogLevelをグローバル変数として定義
   global.test_id = req.body.test_id;
+  global.logLevel = req.body.logLevel;
   main.findOneTest(req.body, (err, docs) => {
     if (err) {
         // console.log(err);
@@ -87,9 +96,10 @@ app.post("/findOneTest", function(req, res, next){
 
 app.post("/update", function(req, res, next){
   req.body.method = "update";
-  console.log(req.body);
-  // test_idをグローバル変数として定義
+  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
+  // test_idとlogLevelをグローバル変数として定義
   global.test_id = req.body.test_id;
+  global.logLevel = req.body.logLevel;
   main.updateDocuments(req.body.model_name, req.body.query, req.body.document, function(err, docs) {
     if (err) {
       console.log(err);
@@ -101,18 +111,20 @@ app.post("/update", function(req, res, next){
 
 app.post("/createMv", function(req, res, next){
   req.body.method = "createMv";
-  console.log(req.body);
-  // test_idをグローバル変数として定義
+  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
+  // test_idとlogLevelをグローバル変数として定義
   global.test_id = req.body.test_id;
+  global.logLevel = req.body.logLevel;
   main.createMvDocument(req.body.model_name, req.body.populate, req.body.id_array);
   res.json({"code": "300"});
 });
 
 app.post("/judgeCreateMv", function(req, res, next){
   req.body.method = "judgeCreateMv";
-  console.log(req.body);
-  // test_idをグローバル変数として定義
+  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
+  // test_idとlogLevelをグローバル変数として定義
   global.test_id = req.body.test_id;
+  global.logLevel = req.body.logLevel;
   main.judgeCreateMv(function(err, docs){
     if (err) res.json(err);
     res.json(docs);
@@ -121,7 +133,7 @@ app.post("/judgeCreateMv", function(req, res, next){
 
 app.post("/aggregateTest", function(req, res, next){
   req.body.method = "aggregateTest";
-  console.log(req.body);
+  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
   main.aggregateTest(req.body.test_id, req.body.method_name, function(err, docs){
     if (err) res.json(err);
     res.json(docs);
@@ -130,9 +142,10 @@ app.post("/aggregateTest", function(req, res, next){
 
 app.post("/experimentById", function(req, res, next){
   req.body.method = "experiment";
-  console.log(req.body);
-  // test_idをグローバル変数として定義
+  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
+  // test_idとlogLevelをグローバル変数として定義
   global.test_id = req.body.test_id;
+  global.logLevel = req.body.logLevel;
   main.experimentById(req.body.test_id,
     req.body.method_name,
     req.body.model_name,
@@ -148,7 +161,7 @@ app.post("/experimentById", function(req, res, next){
 
 app.post("/createEx1Collection", function(req, res, next){
   req.body.method = "createEx1Collection";
-  console.log(req.body);
+  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
   main.createEx1Collection(function(err, docs){
     if (err) res.json(err);
     res.json(docs);
