@@ -2,6 +2,7 @@
 const main = require('./populate');
 const express = require("express");
 const bodyParser = require('body-parser');
+const { PerformanceObserver, performance } = require('perf_hooks');
 const lib = require('./../lib');
 require('dotenv').config();
 const env = process.env;
@@ -13,6 +14,9 @@ const topLog = 1,
 normalLog = 2,
 lowLog = 3,
 wasteLog = 4;
+
+// JOBTIME
+var allJobStartTime, allJobEndTime;
 
 // urlencodedとjsonは別々に初期化する
 app.use(bodyParser.urlencoded({
@@ -33,6 +37,20 @@ app.post("/test", function(req, res, next){
   res.json({"code": "200"});
 });
 
+app.post("/start", function(req, res, next){
+  setGlobalVariable(req.body);
+  allJobStartTime = performance.now();
+  lib.showLog(`Start JOB now:${allJobStartTime}`, null, topLog);
+  res.json({"code": "200"});
+});
+
+app.post("/finish", function(req, res, next){
+  setGlobalVariable(req.body);
+  allJobEndTime = performance.now();
+  lib.showLog(`Fishish ALL JOB elapsedTime:${allJobEndTime-allJobStartTime} end: ${allJobEndTime}`, null, topLog);
+  res.json({"code": "200"});
+});
+
 app.get("/getModelList", function(req, res, next){
   let modelList_str = Object.keys(main.modelList).join(',');
   let ex1ModelList_str = Object.keys(main.ex1ModelList).join(',');
@@ -40,11 +58,9 @@ app.get("/getModelList", function(req, res, next){
 });
 
 app.post("/insertMany", function(req, res, next){
+  setGlobalVariable(req.body);
   req.body.method = "insertMany";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
-  // test_idとlogLevelをグローバル変数として定義
-  global.test_id = req.body.test_id;
-  global.logLevel = req.body.logLevel;
   if (!Array.isArray(req.body.document)) {
     res.json({"code": "400", "message": "Document must be Array!"});
     return;
@@ -61,11 +77,9 @@ app.post("/insertMany", function(req, res, next){
 });
 
 app.post("/findOne", function(req, res, next){
+  setGlobalVariable(req.body);
   req.body.method = "findeOne";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
-  // test_idとlogLevelをグローバル変数として定義
-  global.test_id = req.body.test_id;
-  global.logLevel = req.body.logLevel;
   main.modelList[req.body.model_name].
   findOne(req.body.query).
   populate(req.body.populate).
@@ -79,11 +93,9 @@ app.post("/findOne", function(req, res, next){
 });
 
 app.post("/findOneTest", function(req, res, next){
+  setGlobalVariable(req.body);
   req.body.method = "findeOneTest";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
-  // test_idとlogLevelをグローバル変数として定義
-  global.test_id = req.body.test_id;
-  global.logLevel = req.body.logLevel;
   main.findOneTest(req.body, (err, docs) => {
     if (err) {
         // console.log(err);
@@ -95,11 +107,9 @@ app.post("/findOneTest", function(req, res, next){
 });
 
 app.post("/update", function(req, res, next){
+  setGlobalVariable(req.body);
   req.body.method = "update";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
-  // test_idとlogLevelをグローバル変数として定義
-  global.test_id = req.body.test_id;
-  global.logLevel = req.body.logLevel;
   main.updateDocuments(req.body.model_name, req.body.query, req.body.document, function(err, docs) {
     if (err) {
       console.log(err);
@@ -110,21 +120,17 @@ app.post("/update", function(req, res, next){
 });
 
 app.post("/createMv", function(req, res, next){
+  setGlobalVariable(req.body);
   req.body.method = "createMv";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
-  // test_idとlogLevelをグローバル変数として定義
-  global.test_id = req.body.test_id;
-  global.logLevel = req.body.logLevel;
   main.createMvDocument(req.body.model_name, req.body.populate, req.body.id_array);
   res.json({"code": "300"});
 });
 
 app.post("/judgeCreateMv", function(req, res, next){
+  setGlobalVariable(req.body);
   req.body.method = "judgeCreateMv";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
-  // test_idとlogLevelをグローバル変数として定義
-  global.test_id = req.body.test_id;
-  global.logLevel = req.body.logLevel;
   main.judgeCreateMv(function(err, docs){
     if (err) res.json(err);
     res.json(docs);
@@ -132,6 +138,7 @@ app.post("/judgeCreateMv", function(req, res, next){
 });
 
 app.post("/aggregateTest", function(req, res, next){
+  setGlobalVariable(req.body);
   req.body.method = "aggregateTest";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
   main.aggregateTest(req.body.test_id, req.body.method_name, function(err, docs){
@@ -140,30 +147,9 @@ app.post("/aggregateTest", function(req, res, next){
   });
 });
 
-app.post("/experimentById", function(req, res, next){
-  req.body.method = "experiment";
-  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
-  // test_idとlogLevelをグローバル変数として定義
-  global.test_id = req.body.test_id;
-  global.logLevel = req.body.logLevel;
-  main.experimentById(req.body.test_id,
-    req.body.method_name,
-    req.body.model_name,
-    req.body.min_id,
-    req.body.max_id,
-    req.body.populate,
-    req.body.trials,
-    function(err, docs){
-    if (err) res.json(err);
-    res.json(docs);
-  });
-});
-
-app.post("/createEx1Collection", function(req, res, next){
-  req.body.method = "createEx1Collection";
-  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
-  main.createEx1Collection(function(err, docs){
-    if (err) res.json(err);
-    res.json(docs);
-  });
-});
+function setGlobalVariable(body) {
+  global.testId = body.test_id;
+  global.logLevel = body.log_level;
+  global.processNum = body.process_num;
+  global.processNumAll = body.process_num_all;
+}

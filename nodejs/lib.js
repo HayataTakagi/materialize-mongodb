@@ -5,16 +5,10 @@ module.exports = {
   // 経過時間,呼び出し元メソッド,メッセージをログ表示する
   showLog: function showLog(msg, startTime, logLevel=3) {
     if (!global.logLevel || global.logLevel >= logLevel){
-      let elapsed_time = "NaN";
-      if (startTime) {
-        let now_time = performance.now();
-            elapsed_time = (now_time - startTime).toFixed(3);
-      }
-      if (showLog.caller.name) {
-        console.log('[' + getNowTime() + '|' + elapsed_time + ']'  + showLog.caller.name + ' | ' + msg);
-      } else {
-        console.log('[' + getNowTime() + '|' + elapsed_time + ']' + msg);
-      }
+      let processMessage = global.processNum && global.processNumAll ? `${global.processNum}/${global.processNumAll}|` : "";
+      let callerMessage = showLog.caller.name ? `${showLog.caller.name} | ` : "";
+      let elapsedTime = startTime ? (performance.now() - startTime).toFixed(3) : "NaN";
+      console.log(`[${getNowTime()}|${processMessage}${elapsedTime}]${callerMessage}${msg}`);
     }
   },
 

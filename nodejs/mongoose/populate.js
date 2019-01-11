@@ -284,8 +284,8 @@ function queryLog(elapsedTime, obj) {
   if (obj.hasOwnProperty("_mongooseOptions_ori")) {
     saveObject.populate = Object.keys(obj._mongooseOptions_ori.populate);
   }
-  if (global.test_id) {
-    saveObject.test_id = global.test_id;
+  if (global.testId) {
+    saveObject.test_id = global.testId;
   }
   // クエリが書き換えられたかどうか
   saveObject.is_rewrited = obj._isRewritedQuery ? 1 : 0;
@@ -553,7 +553,7 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
         mvDocuments[value],  // 保存するobject
         {upsert: true, setDefaultsOnInsert: true},
         (err, res) => {
-          showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}`, preTime, logLev);
+          showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}, now:${performance.now()}`, preTime, logLev);
         });
     });
     co(function *(){
@@ -628,7 +628,6 @@ let judgeCreateMv = function judgeCreateMv(callback) {
   let updateDocuments = function updateDocuments(modelName, query, update_document, callback) {
     preTime = performance.now();
     showLog('Starting updateDocuments' ,preTime, topLog);
-    let updated_ids = [];
     modelList[modelName].
     find(query).
     exec(function (err, docs) {
@@ -650,8 +649,6 @@ let judgeCreateMv = function judgeCreateMv(callback) {
             callback(err, null);
           }
           showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, preTime, normalLog);
-          // 更新したidを格納
-          updated_ids.push(doc._id);
         });
       });
       if (env.IS_USE_MV != 1) {
@@ -686,50 +683,12 @@ let judgeCreateMv = function judgeCreateMv(callback) {
     });
   };
 
-  // idによるfindOneのテスト
-  let experimentById = function experimentById(testId, methodName, modelName, minId, maxId, populate, trials, callback) {
-    let id_array = Array.from({length: maxId-minId+1}, (v, k) => k + minId);
-    let query_array = __.sample(id_array, trials);
-    Object.keys(query_array).forEach(value => {
-      modelList[modelName].
-      findOne({_id: query_array[value]}).
-      populate(populate).
-      exec(function (err, doc) {
-        if (err) {
-          console.log(err);
-        }
-        return;
-      });
-    });
-    callback(null, query_array);
-  };
-
-  // ex1用コレクション作成
-  let createEx1Collection = function createEx1Collection(callback) {
-    preTime = performance.now();
-    showLog('Starting createEx1Collection' ,preTime, topLog);
-    Object.keys(populateListForModel).forEach(value => {
-      modelList[value].find().
-      populate(populateListForModel[value]).
-      exec((err, docs) => {
-        if (err) return console.log(err);
-        showLog(`Copying model:${value} populate:${populateListForModel[value]}`, preTime, topLog);
-        // 実験用コレクションに保存
-        ex1ModelList[value].insertMany(docs, (err, insertMany_docs) => {
-          if (err) return console.log(err);
-        });
-      });
-    });
-    callback(null, {"code": "ok"});
-  }
-
   // findOneテスト
   let findOneTest = function findOneTest (body, callback) {
     preTime = performance.now();
     showLog('Starting createEx1Collection' ,preTime, topLog);
     if (body.exName == "ex1") {
-      // 実験A
-      ex1ModelList[body.model_name].
+      mvModelList[body.model_name].
       findOne(body.query).
       exec((err, doc) => {
         if (err) {
@@ -775,10 +734,6 @@ let judgeCreateMv = function judgeCreateMv(callback) {
     populateListForModel: populateListForModel,
     // テストの集計
     aggregateTest: aggregateTest,
-    // idによるfindOneのテスト
-    experimentById: experimentById,
-    // Ex1のコレクション作成
-    createEx1Collection: createEx1Collection,
     // findOneテスト
     findOneTest: findOneTest
   };
