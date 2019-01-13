@@ -75,6 +75,11 @@ module.exports = {
       root.pop();
       return;
     }
+  },
+
+  // 実証用TimeoutMethod
+  timeout: function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 };
 

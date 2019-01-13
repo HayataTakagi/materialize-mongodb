@@ -556,7 +556,7 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
     preTime = performance.now();
     showLog('Starting judgeCreateMv',preTime, topLog);
     // ユーザーログの読み込み
-    var aggregate =  logModelList['Userlog'].aggregate([
+    logModelList['Userlog'].aggregate([
       { $match: {
         populate: { $exists: true, $ne: [] },
         date: {
@@ -687,10 +687,48 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
       });
     }
 
-    function timeout(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
+    // データベース削除
+    let removeCollections = function removeCollections (body, callback) {
+      preTime = performance.now();
+      showLog('Starting removeCollections' ,preTime, topLog);
+      if (body.isRemoveOriginal || body.isRemoveAll) {
+        showLog(`Remove (ORIGINAL)-collections of [${Object.keys(modelList)}]`,preTime, topLog);
+        Object.keys(modelList).forEach(value => {
+          // MVのコレクション名をモデル名から取得
+          let originalCollectionName = utils.toCollectionName(value);
+          // コレクションの削除処理
+          db.dropCollection(originalCollectionName, (err, res) => {
+            if (err) showLog(`Error remove (ORIGINAL)-collections of ${value}`, preTime, normalLog);
+            if (res) showLog(`Success remove (ORIGINAL)-collections of ${value}`, preTime, normalLog);
+          });
+        });
+      }
+      if (body.isRemoveMv || body.isRemoveAll) {
+        showLog(`Remove (MV)-collections of [${Object.keys(mvModelList)}]`,preTime, topLog);
+        Object.keys(mvModelList).forEach(value => {
+          // MVのコレクション名をモデル名から取得
+          let mvCollectionName = getMvCollectionName(utils.toCollectionName(value));
+          // コレクションの削除処理
+          db.dropCollection(mvCollectionName, (err, res) => {
+            if (err) showLog(`Error remove (MV)-collections of ${value}`, preTime, normalLog);
+            if (res) showLog(`Success remove (MV)-collections of ${value}`, preTime, normalLog);
+          });
+        });
+      }
+      if (body.isRemoveLog || body.isRemoveAll) {
+        showLog(`Remove (LOG)-collections of [${Object.keys(logModelList)}]`,preTime, topLog);
+        Object.keys(logModelList).forEach(value => {
+          // MVのコレクション名をモデル名から取得
+          let logCollectionName = utils.toCollectionName(value);
+          // コレクションの削除処理
+          db.dropCollection(logCollectionName, (err, res) => {
+            if (err) showLog(`Error remove (LOG)-collections of ${value}`, preTime, normalLog);
+            if (res) showLog(`Success remove (LOG)-collections of ${value}`, preTime, normalLog);
+          });
+        });
+      }
+      callback(null, {"message": "OK"});
+    };
 
     module.exports = {
       // モデル本体
@@ -708,5 +746,7 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
       // テストの集計
       aggregateTest: aggregateTest,
       // findOneテスト
-      findOneTest: findOneTest
+      findOneTest: findOneTest,
+      // データベースの削除
+      removeCollections: removeCollections
     };

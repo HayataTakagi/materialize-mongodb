@@ -87,6 +87,7 @@ app.post("/findOne", function(req, res, next){
     if (err) {
       console.log(err);
       res.send(err);
+      return;
     }
     res.json(doc);
   });
@@ -101,6 +102,7 @@ app.post("/findOneTest", function(req, res, next){
         // console.log(err);
         console.log("Error");
         res.send(err);
+        return;
       }
       res.json(docs);
   });
@@ -133,7 +135,7 @@ app.post("/judgeCreateMv", function(req, res, next){
   req.body.method = "judgeCreateMv";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
   main.judgeCreateMv(function(err, docs){
-    if (err) res.json(err);
+    if (err) return res.json(err);
     res.json(docs);
   });
 });
@@ -143,7 +145,17 @@ app.post("/aggregateTest", function(req, res, next){
   req.body.method = "aggregateTest";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
   main.aggregateTest(req.body.test_id, req.body.method_name, function(err, docs){
-    if (err) res.json(err);
+    if (err) return res.json(err);
+    res.json(docs);
+  });
+});
+
+app.post("/removeCollections", function(req, res, next){
+  setGlobalVariable(req.body);
+  req.body.method = "removeCollections";
+  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
+  main.removeCollections(req.body, function(err, docs){
+    if (err) return res.json(err);
     res.json(docs);
   });
 });
