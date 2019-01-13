@@ -110,10 +110,11 @@ app.post("/update", function(req, res, next){
   setGlobalVariable(req.body);
   req.body.method = "update";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
-  main.updateDocuments(req.body.model_name, req.body.query, req.body.document, function(err, docs) {
+  main.updateDocuments(req.body, function(err, docs) {
     if (err) {
       console.log(err);
       res.send(err);
+      return;
     }
     res.json(docs);
   })

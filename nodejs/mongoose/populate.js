@@ -133,9 +133,8 @@ schemaBilder(schemaSeeds, schemaList);
 createPopulateListForModel(schemaSeeds);
 
 // mvスキーマの定義
-let mvSchemaList = {},
-    ex1SchemaList = {};
-mvSchemaBilder(mvSchemaList, ex1SchemaList);
+let mvSchemaList = {};
+mvSchemaBilder(mvSchemaList);
 
 // logスキーマの定義
 let logSchemaList = {};
@@ -259,12 +258,9 @@ Object.keys(schemaList).forEach(function(value) {
 // モデル定義
 let modelList = {},
 mvModelList = {},
-ex1ModelList = {},
 logModelList = {};
 modelBilder(schemaList, modelList);
 modelBilder(mvSchemaList, mvModelList, true);
-exModelBilder(ex1SchemaList, ex1ModelList, "ex1");
-
 modelBilder(logSchemaList, logModelList);
 
 db.on('error', console.error.bind(console, 'connection error:'));
@@ -356,14 +352,13 @@ function schemaBilder(seedObjects, schemaObjects) {
 }
 
 // 与えられたSeedsのMVスキーマを作成
-function mvSchemaBilder(mvSchemaObjects, ex1SchemaObjects) {
+function mvSchemaBilder(mvSchemaObjects) {
   Object.keys(mvSchemaSeeds).forEach(function(value) {
     // ref型のスキーマをembed型に変換
     replaceRefSchema(mvSchemaSeeds[value], '', getModelName(value));
-    // ex1用のSchemaを作成
-    ex1SchemaObjects[value] = Schema(mvSchemaSeeds[value]);
-    // Seedからmvスキーマを作成
+    // MVにログを埋め込む
     addLogSchemaToMv(mvSchemaSeeds[value]);
+    // Seedからmvスキーマを作成
     mvSchemaObjects[value] = Schema(mvSchemaSeeds[value]);
     showLog('mvSchemaBilder | ' + value + '\'s mv has created.', preTime, topLog);
   });
@@ -425,17 +420,6 @@ function modelBilder(schemaObjects, modelObjects, is_mv = false) {
     } else {
       modelObjects[modelName] = mongoose.model(modelName, schemaObjects[value]);
     }
-  });
-}
-
-// 実験用モデル作成
-function exModelBilder(schemaObjects, modelObjects, exName) {
-  // 実験A => mvseedsを使ってmodel作成, insertManyでデータ挿入
-  // 実験B => originalを使う(IS_USE_MV=0)
-  // 実験C => 機構を用いる(IS_USE_MV=1)
-  Object.keys(schemaObjects).forEach(function(value) {
-    let modelName = getModelName(value);
-    modelObjects[modelName] = mongoose.model(exName + modelName, schemaObjects[value]);
   });
 }
 
@@ -518,7 +502,7 @@ function updateChildrenMv(toUpdateMv, doc_ids) {
         var to_update_ids = Object.keys(docs).map((element) => {
           return docs[element]._id;
         });
-        showLog(`updateChildrenMv | (CHILDREN-POPULATE)Updating populate-MV ${to_update_ids.length} docs in ${modelName_key}`, preTime, lowLog)
+        showLog(`updateChildrenMv | (CHILDREN-POPULATE)Updating populate-MV ${to_update_ids.length} docs in ${modelName_key}`, preTime, lowLog);
         createMvDocument(modelName_key, docs[0].log_populate, to_update_ids);
       });
     });
@@ -555,150 +539,142 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
         (err, res) => {
           showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}, now:${performance.now()}`, preTime, logLev);
         });
-    });
-    co(function *(){
-      Promise.all(mvSavePromises).then(() => {
-        // something
       });
-    }).then(() => {
-      // MVログを記載
-      createMvLog(modelName, collectionName, populate);
-    });
-  });
-};
-
-// MV作成判断
-let judgeCreateMv = function judgeCreateMv(callback) {
-  preTime = performance.now();
-  showLog('Starting judgeCreateMv',preTime, topLog);
-  // ユーザーログの読み込み
-  var aggregate =  logModelList['Userlog'].aggregate([
-    { $match: {
-      populate: { $exists: true, $ne: [] },
-      date: {
-        $lt: new Date(),
-        $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)},
-        is_rewrited: false,
-        method: "findOne"
-      }},
-      { $group: {
-        _id: {model_name: "$model_name", method: "$method", populate: "$populate"},
-        total_time: { $sum: "$elapsed_time"},
-        average_time: { $avg: "$elapsed_time"},
-        count: { $sum: 1}
-      }},
-      { $sort: { "_id.model_name": 1, "average_time": -1, "count": -1}}
-    ]).
-    exec((err, docs) => {
-      // 処理平均時間が超えているクエリに関してコレクション毎に整理する
-      var userLogObject = {};
-      Object.keys(docs).forEach((value) => {
-        if (docs[value].average_time > env.MV_CREATE_AVG) {
-          // 処理平均時間が超えているクエリを選択
-          if (userLogObject[docs[value]._id.model_name] == null) {
-            // コレクション毎にarrayを作成
-            userLogObject[docs[value]._id.model_name] = [];
-          }
-          // コレクションarrayにpush
-          userLogObject[docs[value]._id.model_name].push(docs[value]);
-        }
+      co(function *(){
+        Promise.all(mvSavePromises).then(() => {
+          // something
+        });
+      }).then(() => {
+        // MVログを記載
+        createMvLog(modelName, collectionName, populate);
       });
-      showLog('Finish Cluclation About userLog' , preTime, topLog);
-      console.log(userLogObject);
-      // 各コレクションの最重要項目のみMV化
-      Object.keys(userLogObject).forEach((value) => {
-        if (value != "undefined") {
-          // 上位からpopulate先が存在するものがあるまでループを実行
-          userLogObject[value].some((logObject) => {
-            let topUserLog = logObject._id;
-            // populateの妥当性をチェック
-            if (checkPopulateAdequacy(topUserLog.model_name, topUserLog.populate)) {
-              showLog(`Create MV (model_name: ${topUserLog.model_name}, populate: [${topUserLog.populate.join(',')}])`, preTime, topLog);
-              createMvDocument(topUserLog.model_name, topUserLog.populate);
-              return true;  // ループ文(some)を抜ける
-            }
-          });
-        }
-      });
-      callback(null, userLogObject);
     });
   };
 
-  // オリジナルコレクション&MV更新処理
-  let updateDocuments = function updateDocuments(modelName, query, update_document, callback) {
+  // MV作成判断
+  let judgeCreateMv = function judgeCreateMv(callback) {
     preTime = performance.now();
-    showLog('Starting updateDocuments' ,preTime, topLog);
-    modelList[modelName].
-    find(query).
-    exec(function (err, docs) {
-      if (err) {
-        console.log(err);
-        callback(err, null);
-      }
-      // オリジナルコレクションの更新
-      Object.keys(docs).forEach((value) => {
-        // updated_atを更新
-        if (!update_document.hasOwnProperty('updated_at')) {
-          update_document.updated_at = new Date();
-        }
-        // 更新処理
-        Object.assign(docs[value], update_document);
-        docs[value].save((err, doc) => {
+    showLog('Starting judgeCreateMv',preTime, topLog);
+    // ユーザーログの読み込み
+    var aggregate =  logModelList['Userlog'].aggregate([
+      { $match: {
+        populate: { $exists: true, $ne: [] },
+        date: {
+          $lt: new Date(),
+          $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)},
+          is_rewrited: false,
+          method: "findOne"
+        }},
+        { $group: {
+          _id: {model_name: "$model_name", method: "$method", populate: "$populate"},
+          total_time: { $sum: "$elapsed_time"},
+          average_time: { $avg: "$elapsed_time"},
+          count: { $sum: 1}
+        }},
+        { $sort: { "_id.model_name": 1, "average_time": -1, "count": -1}}
+      ]).
+      exec((err, docs) => {
+        // 処理平均時間が超えているクエリに関してコレクション毎に整理する
+        var userLogObject = {};
+        Object.keys(docs).forEach((value) => {
+          if (docs[value].average_time > env.MV_CREATE_AVG) {
+            // 処理平均時間が超えているクエリを選択
+            if (userLogObject[docs[value]._id.model_name] == null) {
+              // コレクション毎にarrayを作成
+              userLogObject[docs[value]._id.model_name] = [];
+            }
+            // コレクションarrayにpush
+            userLogObject[docs[value]._id.model_name].push(docs[value]);
+          }
+        });
+        showLog('Finish Cluclation About userLog' , preTime, topLog);
+        console.log(userLogObject);
+        // 各コレクションの最重要項目のみMV化
+        Object.keys(userLogObject).forEach((value) => {
+          if (value != "undefined") {
+            // 上位からpopulate先が存在するものがあるまでループを実行
+            userLogObject[value].some((logObject) => {
+              let topUserLog = logObject._id;
+              // populateの妥当性をチェック
+              if (checkPopulateAdequacy(topUserLog.model_name, topUserLog.populate)) {
+                showLog(`Create MV (model_name: ${topUserLog.model_name}, populate: [${topUserLog.populate.join(',')}])`, preTime, topLog);
+                createMvDocument(topUserLog.model_name, topUserLog.populate);
+                return true;  // ループ文(some)を抜ける
+              }
+            });
+          }
+        });
+        callback(null, userLogObject);
+      });
+    };
+
+    // オリジナルコレクション&MV更新処理
+    let updateDocuments = function updateDocuments(body ,callback) {
+      preTime = performance.now();
+      showLog('Starting updateDocuments' ,preTime, topLog);
+      if (!body.model_name || !body.query || !body.update_document) {
+        callback({"message": "model_name or body.query or update_document are undefine!"}, null);
+      } else {
+        modelList[body.model_name].
+        find(body.query).
+        exec(function (err, docs) {
           if (err) {
             console.log(err);
             callback(err, null);
           }
-          showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, preTime, normalLog);
+          // オリジナルコレクションの更新
+          Object.keys(docs).forEach((value) => {
+            // updated_atを更新
+            if (!body.update_document.hasOwnProperty('updated_at')) {
+              body.update_document.updated_at = new Date();
+            }
+            // 更新処理
+            Object.assign(docs[value], body.update_document);
+            docs[value].save((err, doc) => {
+              if (err) {
+                console.log(err);
+                callback(err, null);
+              }
+              showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, preTime, normalLog);
+            });
+          });
+          if (env.IS_USE_MV != 1) {
+            showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", preTime, lowLog);
+          } else {
+            // オリジナルに関わるMVを更新
+            updateMvDocuments(docs, body.model_name, body.query, body.update_document);
+          }
+          callback(null, docs);
         });
-      });
-      if (env.IS_USE_MV != 1) {
-        showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", preTime, lowLog);
-      } else {
-        // オリジナルに関わるMVを更新
-        updateMvDocuments(docs, modelName, query, update_document);
       }
-      callback(null, docs);
-    });
-  };
+    };
 
-  // testの集計
-  let aggregateTest = function aggregateTest(testId, methodName, callback){
-    logModelList['Userlog'].aggregate([
-      { $match: {
-        test_id: testId,
-        method: methodName
-      }},
-      { $group: {
-        _id: {model_name: "$model_name", method: "$method", populate: "$populate", is_rewrited: "$is_rewrited"},
-        total_time: { $sum: "$elapsed_time"},
-        average_time: { $avg: "$elapsed_time"},
-        count: { $sum: 1}
-      }},
-      { $sort: { "_id.model_name": 1, "average_time": -1, "count": -1}}
-    ]).
-    exec((err, docs) => {
-      if (err) callback(err, null);
-      console.log(docs);
-      callback(null, docs);
-    });
-  };
-
-  // findOneテスト
-  let findOneTest = function findOneTest (body, callback) {
-    preTime = performance.now();
-    showLog('Starting createEx1Collection' ,preTime, topLog);
-    if (body.exName == "ex1") {
-      mvModelList[body.model_name].
-      findOne(body.query).
-      exec((err, doc) => {
-        if (err) {
-          console.log(err);
-          callback(err, null);
-        }
-        callback(null, doc);
+    // testの集計
+    let aggregateTest = function aggregateTest(testId, methodName, callback){
+      logModelList['Userlog'].aggregate([
+        { $match: {
+          test_id: testId,
+          method: methodName
+        }},
+        { $group: {
+          _id: {model_name: "$model_name", method: "$method", populate: "$populate", is_rewrited: "$is_rewrited"},
+          total_time: { $sum: "$elapsed_time"},
+          average_time: { $avg: "$elapsed_time"},
+          count: { $sum: 1}
+        }},
+        { $sort: { "_id.model_name": 1, "average_time": -1, "count": -1}}
+      ]).
+      exec((err, docs) => {
+        if (err) callback(err, null);
+        console.log(docs);
+        callback(null, docs);
       });
-    } else {
-      // 実験A以外
+    };
+
+    // findOneテスト
+    let findOneTest = function findOneTest (body, callback) {
+      preTime = performance.now();
+      showLog('Starting createEx1Collection' ,preTime, topLog);
       modelList[body.model_name].
       findOne(body.query).
       populate(body.populate).
@@ -710,30 +686,27 @@ let judgeCreateMv = function judgeCreateMv(callback) {
         callback(null, doc);
       });
     }
-  }
 
-  function timeout(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
+    function timeout(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
 
 
-  module.exports = {
-    // モデル本体
-    modelList: modelList,
-    // ex1モデル本体
-    ex1ModelList: ex1ModelList,
-    // MVの作成
-    createMvDocument: createMvDocument,
-    // MV作成判断
-    judgeCreateMv: judgeCreateMv,
-    // オリジナル&MV更新処理
-    updateDocuments: updateDocuments,
-    // populateを検知したモデル
-    populateModelList: populateModelList,
-    // populate先をモデル別にリスト
-    populateListForModel: populateListForModel,
-    // テストの集計
-    aggregateTest: aggregateTest,
-    // findOneテスト
-    findOneTest: findOneTest
-  };
+    module.exports = {
+      // モデル本体
+      modelList: modelList,
+      // MVの作成
+      createMvDocument: createMvDocument,
+      // MV作成判断
+      judgeCreateMv: judgeCreateMv,
+      // オリジナル&MV更新処理
+      updateDocuments: updateDocuments,
+      // populateを検知したモデル
+      populateModelList: populateModelList,
+      // populate先をモデル別にリスト
+      populateListForModel: populateListForModel,
+      // テストの集計
+      aggregateTest: aggregateTest,
+      // findOneテスト
+      findOneTest: findOneTest
+    };
