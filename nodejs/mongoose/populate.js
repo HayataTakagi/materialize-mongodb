@@ -4,13 +4,9 @@ utils = require('mongoose-utils/node_modules/mongoose/lib/utils'),
 co = require('co'),
 __ = require('underscore'),
 lib = require('./../lib'),
-index = require('./index');
-const showLog = lib.showLog,
-completeAssign = lib.completeAssign,
-getSchemaName = lib.getSchemaName,
-getModelName = lib.getModelName,
-getMvCollectionName = lib.getMvCollectionName,
-getContext = lib.getContext;
+index = require('./index'),
+schemaIndex = require('./schemaIndex');
+const showLog = lib.showLog;
 require('dotenv').config();
 const env = process.env;
 
@@ -35,97 +31,10 @@ normalLog = 2,
 lowLog = 3,
 wasteLog = 4;
 
-const schemaSeeds = {
-  "personSchema": {
-    _id: Number,
-    name: String,
-    age: Number,
-    stories: [{ type: Number, ref: 'Story' }],
-    created_at: {type: Date, default: Date.now},
-    updated_at: {type: Date, default: Date.now},
-  }, "storySchema": {
-    _id: Number,
-    author: { type: Number, ref: 'Person' },
-    title: String,
-    fans: [{ type: Number, ref: 'Person' }],
-    comments : [{ type: Number, ref: 'Comment' }],
-    created_at: {type: Date, default: Date.now},
-    updated_at: {type: Date, default: Date.now},
-  }, "commentSchema": {
-    _id: Number,
-    speak: {
-      speaker: { type: Number, ref: 'Person' },
-      comment: String
-    },
-    story: { type: Number, ref: 'Story' },
-    created_at: {type: Date, default: Date.now},
-    updated_at: {type: Date, default: Date.now},
-  }, "weatherSchema": {
-    _id: Number,
-    weather: String,
-    date: Date,
-    created_at: {type: Date, default: Date.now},
-    updated_at: {type: Date, default: Date.now},
-  }
-};
-
-let mvSchemaSeeds = {
-  "personSchema": {
-    _id: Number,
-    name: String,
-    age: Number,
-    stories: [{ type: Number, ref: 'Story' }],
-    created_at: {type: Date, default: Date.now},
-    updated_at: {type: Date, default: Date.now},
-  }, "storySchema": {
-    _id: Number,
-    author: { type: Number, ref: 'Person' },
-    title: String,
-    fans: [{ type: Number, ref: 'Person' }],
-    comments : [{ type: Number, ref: 'Comment' }],
-    created_at: {type: Date, default: Date.now},
-    updated_at: {type: Date, default: Date.now},
-  }, "commentSchema": {
-    _id: Number,
-    speak: {
-      speaker: { type: Number, ref: 'Person' },
-      comment: String
-    },
-    story: { type: Number, ref: 'Story' },
-    created_at: {type: Date, default: Date.now},
-    updated_at: {type: Date, default: Date.now},
-  }, "weatherSchema": {
-    _id: Number,
-    weather: String,
-    date: Date,
-    created_at: {type: Date, default: Date.now},
-    updated_at: {type: Date, default: Date.now},
-  }
-};
-
-const logSchemaSeeds = {
-  "userlogSchema": {
-    _id: ObjectId,
-    elapsed_time: Number,
-    options: Mixed,
-    collection_name: String,
-    model_name: String,
-    method: String,
-    query: Mixed,
-    populate: [ String ],
-    is_rewrited: Boolean,
-    test_id: Number,
-    date: {type: Date, default: Date.now},
-  }, "mvlogSchema": {
-    _id: ObjectId,
-    original_model: String,
-    original_coll: String,
-    populate: [ String ],
-    populate_model: [ String ],
-    created_at: {type: Date, default: Date.now},
-    updated_at: {type: Date, default: Date.now},
-  },
-};
+// スキーマシードの定義
+const schemaSeeds = schemaIndex.seedObjects[env.SCHEMA_NAME];
+const mvSchemaSeeds = schemaIndex.mvSeedObjects[env.SCHEMA_NAME];
+const logSchemaSeeds = schemaIndex.logSeedObjects;
 
 // オリジナルスキーマの作成
 let schemaList = {};
@@ -331,9 +240,9 @@ function rewriteQueryToMv(query, callback) {
     // モデル情報の書き換え
     query.model = mvModelList[modelName];
     // スキーマ情報書き換え
-    query.schema = mvSchemaList[getSchemaName(modelName)];
+    query.schema = mvSchemaList[lib.getSchemaName(modelName)];
     // コレクション情報書き換え
-    query._collection.collection = db.collection(getMvCollectionName(collectionName));
+    query._collection.collection = db.collection(lib.getMvCollectionName(collectionName));
     // populateオプションの除去
     query._mongooseOptions = "";
     // クエリ書き換えのフラグを立てる
@@ -355,7 +264,7 @@ function schemaBilder(seedObjects, schemaObjects) {
 function mvSchemaBilder(mvSchemaObjects) {
   Object.keys(mvSchemaSeeds).forEach(function(value) {
     // ref型のスキーマをembed型に変換
-    replaceRefSchema(mvSchemaSeeds[value], '', getModelName(value));
+    replaceRefSchema(mvSchemaSeeds[value], '', lib.getModelName(value));
     // MVにログを埋め込む
     addLogSchemaToMv(mvSchemaSeeds[value]);
     // Seedからmvスキーマを作成
@@ -368,7 +277,7 @@ function mvSchemaBilder(mvSchemaObjects) {
 function createPopulateListForModel(SeedObjects) {
   Object.keys(SeedObjects).forEach(function(value) {
     // populateListForModel用配列を準備
-    populateListForModel[getModelName(value)] = [];
+    populateListForModel[lib.getModelName(value)] = [];
   });
 }
 
@@ -393,7 +302,7 @@ function replaceRefSchema(obj, parent='', root) {
           populateListForModel[root].push(current);
         }
         // mvschemaを自動生成した際ここでオリジナルのseedが書き換わってしまう
-        obj[value] = completeAssign({}, schemaSeeds[getSchemaName(obj[value].ref)]);
+        obj[value] = lib.completeAssign({}, schemaSeeds[lib.getSchemaName(obj[value].ref)]);
       } else {
         // 探索を続ける
         let next = parent === '' ? value : `${parent}.${value}`;
@@ -413,7 +322,7 @@ function addLogSchemaToMv(obj) {
 // モデル作成
 function modelBilder(schemaObjects, modelObjects, is_mv = false) {
   Object.keys(schemaObjects).forEach(function(value) {
-    let modelName = getModelName(value);  // モデル名を生成
+    let modelName = lib.getModelName(value);  // モデル名を生成
     if (is_mv) {
       // mvモデルの場合はモデル名に'Mv'を追加する
       modelObjects[modelName] = mongoose.model('Mv' + modelName, schemaObjects[value]);
@@ -427,7 +336,7 @@ function modelBilder(schemaObjects, modelObjects, is_mv = false) {
 function checkPopulateAdequacy(modelName, populate) {
   var returnObject = true;
   Object.keys(populate).forEach((value) => {
-    if (!schemaSeeds[getSchemaName(modelName)].hasOwnProperty(populate[value])) {
+    if (!schemaSeeds[lib.getSchemaName(modelName)].hasOwnProperty(populate[value])) {
       returnObject = false;
       showLog(`[WANING] Skiped ${modelName}-[${populate.join(',')}] Because ${modelName} has NOT ${populate[value]} in Schema.`, preTime, topLog);
       return;
@@ -707,7 +616,7 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
         showLog(`Remove (MV)-collections of [${Object.keys(mvModelList)}]`,preTime, topLog);
         Object.keys(mvModelList).forEach(value => {
           // MVのコレクション名をモデル名から取得
-          let mvCollectionName = getMvCollectionName(utils.toCollectionName(value));
+          let mvCollectionName = lib.getMvCollectionName(utils.toCollectionName(value));
           // コレクションの削除処理
           db.dropCollection(mvCollectionName, (err, res) => {
             if (err) showLog(`Error remove (MV)-collections of ${value}`, preTime, normalLog);

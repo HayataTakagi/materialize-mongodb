@@ -1,0 +1,106 @@
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
+const ObjectId = Schema.Types.ObjectId,
+Mixed = Schema.Types.Mixed;
+
+const seedObjects = {
+  "exASchema": {
+    "personSchema": {
+      _id: Number,
+      name: String,
+      age: Number,
+      stories: [{ type: Number, ref: 'Story' }],
+      created_at: {type: Date, default: Date.now},
+      updated_at: {type: Date, default: Date.now},
+    }, "storySchema": {
+      _id: Number,
+      author: { type: Number, ref: 'Person' },
+      title: String,
+      fans: [{ type: Number, ref: 'Person' }],
+      comments : [{ type: Number, ref: 'Comment' }],
+      created_at: {type: Date, default: Date.now},
+      updated_at: {type: Date, default: Date.now},
+    }, "commentSchema": {
+      _id: Number,
+      speak: {
+        speaker: { type: Number, ref: 'Person' },
+        comment: String
+      },
+      story: { type: Number, ref: 'Story' },
+      created_at: {type: Date, default: Date.now},
+      updated_at: {type: Date, default: Date.now},
+    }, "weatherSchema": {
+      _id: Number,
+      weather: String,
+      date: Date,
+      created_at: {type: Date, default: Date.now},
+      updated_at: {type: Date, default: Date.now},
+    }
+  }
+}
+
+const mvSeedObjects = {
+  "exASchema": {
+    "personSchema": {
+      _id: Number,
+      name: String,
+      age: Number,
+      stories: [{ type: Number, ref: 'Story' }],
+      created_at: {type: Date, default: Date.now},
+      updated_at: {type: Date, default: Date.now},
+    }, "storySchema": {
+      _id: Number,
+      author: { type: Number, ref: 'Person' },
+      title: String,
+      fans: [{ type: Number, ref: 'Person' }],
+      comments : [{ type: Number, ref: 'Comment' }],
+      created_at: {type: Date, default: Date.now},
+      updated_at: {type: Date, default: Date.now},
+    }, "commentSchema": {
+      _id: Number,
+      speak: {
+        speaker: { type: Number, ref: 'Person' },
+        comment: String
+      },
+      story: { type: Number, ref: 'Story' },
+      created_at: {type: Date, default: Date.now},
+      updated_at: {type: Date, default: Date.now},
+    }, "weatherSchema": {
+      _id: Number,
+      weather: String,
+      date: Date,
+      created_at: {type: Date, default: Date.now},
+      updated_at: {type: Date, default: Date.now},
+    }
+  }
+}
+
+const logSeedObjects = {
+  "userlogSchema": {
+    _id: ObjectId,
+    elapsed_time: Number,
+    options: Mixed,
+    collection_name: String,
+    model_name: String,
+    method: String,
+    query: Mixed,
+    populate: [ String ],
+    is_rewrited: Boolean,
+    test_id: Number,
+    date: {type: Date, default: Date.now},
+  }, "mvlogSchema": {
+    _id: ObjectId,
+    original_model: String,
+    original_coll: String,
+    populate: [ String ],
+    populate_model: [ String ],
+    created_at: {type: Date, default: Date.now},
+    updated_at: {type: Date, default: Date.now},
+  },
+}
+
+module.exports = {
+  seedObjects: seedObjects,
+  mvSeedObjects: mvSeedObjects,
+  logSeedObjects: logSeedObjects
+};
