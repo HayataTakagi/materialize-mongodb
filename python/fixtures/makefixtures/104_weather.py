@@ -17,8 +17,12 @@ def weather():
         data["created_at"] = date
         data["updated_at"] = date
         ys.append(data)  # json書き込み用配列に追加
+    doc = cl.OrderedDict()
+    doc["model_name"] = "Weather"
+    doc["log_level"] = 1
+    doc["document"] = ys
     fw = open('./../components/104_weather.json', 'w')
-    json.dump(ys, fw, indent=2, ensure_ascii=False)  # 中間fixtureファイルを出力
+    json.dump(doc, fw, indent=2, ensure_ascii=False)  # jsonファイルを出力
 
 
 if __name__ == '__main__':
