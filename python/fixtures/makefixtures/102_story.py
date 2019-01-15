@@ -8,6 +8,7 @@ def story():
     fake = Factory.create('ja_JP')
     ys = []  # json書き込み用配列に追加
     person_array = range(10100000, 10100000+Ex01.person_number)  # ユーザーidのArray
+    publisher_array = range(10500000, 10500000+Ex01.publisher_number)
     for i in range(round(Ex01.story_number/2)):
         date = fake.date_time_this_decade().strftime("%Y-%m-%d %H:%M:%S")  # created_at & updated_at用
         data = cl.OrderedDict()  # 格納するフィールドを定義
@@ -15,6 +16,7 @@ def story():
         data["title"] = fake.word(ext_word_list=None)
         data["author"] = random.choice(person_array)
         data["fans"] = random.sample(person_array, random.randint(Ex01.min_fans, Ex01.max_fans))
+        data["publication"] = random.choice(publisher_array)
         data["created_at"] = date
         data["updated_at"] = date
         ys.append(data)  # json書き込み用配列に追加
@@ -33,6 +35,7 @@ def story():
         data["title"] = fake.word(ext_word_list=None)
         data["author"] = random.choice(person_array)
         data["fans"] = random.sample(person_array, random.randint(Ex01.min_fans, Ex01.max_fans))
+        data["publication"] = random.choice(publisher_array)
         data["created_at"] = date
         data["updated_at"] = date
         ys.append(data)  # json書き込み用配列に追加
