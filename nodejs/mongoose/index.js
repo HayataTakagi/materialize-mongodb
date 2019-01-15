@@ -130,6 +130,16 @@ app.post("/createMv", function(req, res, next){
   res.json({"code": "300"});
 });
 
+app.post("/createMvAll", function(req, res, next){
+  setGlobalVariable(req.body);
+  req.body.method = "createMvAll";
+  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, normalLog);
+  main.createMvDocumentAll((err, doc) => {
+    if (err) return res.json(err);
+    res.json(doc);
+  });
+});
+
 app.post("/judgeCreateMv", function(req, res, next){
   setGlobalVariable(req.body);
   req.body.method = "judgeCreateMv";

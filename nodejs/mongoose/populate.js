@@ -428,6 +428,7 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
     var logLev = normalLog;
   } else {
     var logLev = lowLog;
+    showLog(`createMvDocument | Create Mv Collection of ${modelName}`, preTime, normalLog);
   }
   modelList[modelName].
   find(query).
@@ -459,6 +460,14 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
       });
     });
   };
+
+  // 全てのモデルに対してMV作成
+  let createMvDocumentAll = function createMvDocumentAll(callback) {
+    Object.keys(populateListForModel).forEach(value => {
+      createMvDocument(value, populateListForModel[value]);
+    });
+    callback(null, {"message": "ok"});
+  }
 
   // MV作成判断
   let judgeCreateMv = function judgeCreateMv(callback) {
@@ -644,6 +653,8 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
       modelList: modelList,
       // MVの作成
       createMvDocument: createMvDocument,
+      // すべてのモデルに対してMV作成
+      createMvDocumentAll: createMvDocumentAll,
       // MV作成判断
       judgeCreateMv: judgeCreateMv,
       // オリジナル&MV更新処理
