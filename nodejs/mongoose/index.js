@@ -172,7 +172,7 @@ app.post("/removeCollections", function(req, res, next){
 
 function setGlobalVariable(body) {
   global.testId = body.test_id;
-  global.logLevel = body.log_level ? body.log_level : lowLog;
+  global.logLevel = body.log_level ? body.log_level : topLog;
   global.processNum = body.process_num;
   global.processNumAll = body.process_num_all;
 }

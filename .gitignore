@@ -19,3 +19,4 @@ python/fixtures/components
 *.gz
 *.fls
 *.fdb_latexmk
+*.lof

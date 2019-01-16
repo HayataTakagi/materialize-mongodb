@@ -346,7 +346,7 @@ function checkPopulateAdequacy(modelName, populate) {
 }
 
 // mvを更新する
-async function updateMvDocuments(original_docs, modelName, query, update_document) {
+function updateMvDocuments(original_docs, modelName, query, update_document) {
   // MVコレクションの更新
   // MV更新処理(parent)
   showLog("(PARENT-POPULATE)Start updating MvDocuments" ,preTime, normalLog);
@@ -592,7 +592,7 @@ let createMvDocument = function createMvDocument(modelName, populate, document_i
     // findOneテスト
     let findOneTest = function findOneTest (body, callback) {
       preTime = performance.now();
-      showLog('Starting createEx1Collection' ,preTime, topLog);
+      showLog('Starting findOneTest' ,preTime, topLog);
       modelList[body.model_name].
       findOne(body.query).
       populate(body.populate).
