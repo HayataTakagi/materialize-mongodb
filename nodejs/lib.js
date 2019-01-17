@@ -77,6 +77,12 @@ module.exports = {
     }
   },
 
+  // ログレベル
+  topLog: 1,
+  normalLog: 2,
+  lowLog: 3,
+  wasteLog: 4,
+
   // 実証用TimeoutMethod
   timeout: function timeout(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
