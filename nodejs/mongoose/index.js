@@ -61,7 +61,7 @@ app.post("/insertMany", function(req, res, next){
     res.json({"code": "400", "message": "Document must be Array!"});
     return;
   }
-  main.modelList[req.body.model_name].
+  main.modelList[req.body.modelName].
   insertMany(req.body.document, (err, docs) => {
     if (err) {
       console.log(err);
@@ -76,7 +76,7 @@ app.post("/findOne", function(req, res, next){
   setGlobalVariable(req.body);
   req.body.method = "findeOne";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  main.modelList[req.body.model_name].
+  main.modelList[req.body.modelName].
   findOne(req.body.query).
   populate(req.body.populate).
   exec(function (err, doc) {
@@ -122,7 +122,7 @@ app.post("/createMv", function(req, res, next){
   setGlobalVariable(req.body);
   req.body.method = "createMv";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  main.createMvDocument(req.body.model_name, req.body.populate, req.body.id_array);
+  main.createMvDocument(req.body.modelName, req.body.populate, req.body.documentIds);
   res.json({"code": "300"});
 });
 
@@ -150,7 +150,7 @@ app.post("/aggregateTest", function(req, res, next){
   setGlobalVariable(req.body);
   req.body.method = "aggregateTest";
   lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  main.aggregateTest(req.body.test_id, req.body.method_name, function(err, docs){
+  main.aggregateTest(req.body.testId, req.body.methodName, function(err, docs){
     if (err) return res.json(err);
     res.json(docs);
   });
@@ -167,8 +167,8 @@ app.post("/removeCollections", function(req, res, next){
 });
 
 function setGlobalVariable(body) {
-  global.testId = body.test_id;
-  global.logLevel = body.log_level ? body.log_level : lib.topLog;
-  global.processNum = body.process_num;
-  global.processNumAll = body.process_num_all;
+  global.testId = body.testId;
+  global.logLevel = body.logLevel ? body.logLevel : lib.topLog;
+  global.processNum = body.processNum;
+  global.processNumAll = body.processNumAll;
 }

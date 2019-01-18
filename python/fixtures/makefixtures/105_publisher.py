@@ -17,8 +17,8 @@ def publisher():
         data["updated_at"] = date
         ys.append(data)  # json書き込み用配列に追加
     doc = cl.OrderedDict()
-    doc["model_name"] = "Publisher"
-    doc["log_level"] = 1
+    doc["modelName"] = "Publisher"
+    doc["logLevel"] = 1
     doc["document"] = ys
     fw = open('./../components/105_publisher.json', 'w')
     json.dump(doc, fw, indent=2, ensure_ascii=False)  # jsonファイルを出力

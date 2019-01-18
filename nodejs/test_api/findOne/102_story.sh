@@ -5,5 +5,5 @@ do
     http://192.168.33.11:3000/findOneTest \
     -H 'Content-Type: application/json' \
     -H 'cache-control: no-cache' \
-    -d "{\"model_name\":\"Story\", \"query\": {\"_id\" :${i}}, \"populate\": [\"author\", \"fans\", \"publication\", \"comments\"], \"test_id\": 1151423}"
+    -d "{\"modelName\":\"Story\", \"query\": {\"_id\" :${i}}, \"populate\": [\"author\", \"fans\", \"publication\", \"comments\"], \"testId\": 1151423}"
 done

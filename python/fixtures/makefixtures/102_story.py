@@ -21,8 +21,8 @@ def story():
         data["updated_at"] = date
         ys.append(data)  # json書き込み用配列に追加
     doc = cl.OrderedDict()
-    doc["model_name"] = "Story"
-    doc["log_level"] = 1
+    doc["modelName"] = "Story"
+    doc["logLevel"] = 1
     doc["document"] = ys
     fw = open('./../components/102_story_1.json', 'w')
     json.dump(doc, fw, indent=2, ensure_ascii=False)  # jsonファイルを出力
@@ -40,8 +40,8 @@ def story():
         data["updated_at"] = date
         ys.append(data)  # json書き込み用配列に追加
     doc = cl.OrderedDict()
-    doc["model_name"] = "Story"
-    doc["log_level"] = 1
+    doc["modelName"] = "Story"
+    doc["logLevel"] = 1
     doc["document"] = ys
     fw = open('./../components/102_story_2.json', 'w')
     json.dump(doc, fw, indent=2, ensure_ascii=False)  # jsonファイルを出力

@@ -11,11 +11,11 @@ do
   http://192.168.33.11:3000/update \
   -H 'Content-Type: application/json' \
   -H 'cache-control: no-cache' \
-  -d "{\"model_name\": \"Person\", \"query\":{ \"_id\": ${i}}, \"update_document\": {\"name\":\"卒研太郎7\"} ,\"log_level\": 1, \"process_num\": ${j} ,\"process_num_all\": ${#query_array[*]}}"
+  -d "{\"modelName\": \"Person\", \"query\":{ \"_id\": ${i}}, \"update_document\": {\"name\":\"卒研太郎7\"} ,\"logLevel\": 1, \"processNum\": ${j} ,\"processNumAll\": ${#query_array[*]}}"
   j=$((j+1))
 done
 curl -X POST \
 http://192.168.33.11:3000/finish \
 -H 'Content-Type: application/json' \
 -H 'cache-control: no-cache' \
--d "{\"log_level\": 4, \"process_num\": ${j} ,\"process_num\": ${#query_array[*]}}"
+-d "{\"logLevel\": 4, \"processNum\": ${j} ,\"processNumAll\": ${#query_array[*]}}"

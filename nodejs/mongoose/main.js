@@ -22,7 +22,7 @@ const populateListForModel = modelBilder.populateListForModel;
 
 // Mngooseのバッファの設定
 mongoose.set('bufferCommands', true);
-mongoose.connect('mongodb://localhost/nodedb', { useNewUrlParser: true });
+mongoose.connect(`mongodb://${env.DB_IP}/${env.DB_NAME}`, { useNewUrlParser: true });
 var db = mongoose.connection;
 
 // 経過時間用
@@ -42,12 +42,12 @@ function checkPopulateAdequacy(modelName, populate) {
 }
 
 // mvを更新する
-function updateMvDocuments(original_docs, modelName, query, update_document) {
+function updateMvDocuments(originalDocs, modelName, query, updateDocument) {
   // MVコレクションの更新
   // MV更新処理(parent)
   showLog("(PARENT-POPULATE)Start updating MvDocuments" ,preTime, lib.normalLog);
-  var doc_ids = Object.keys(original_docs).map((element) => {
-    return original_docs[element]._id;
+  var doc_ids = Object.keys(originalDocs).map((element) => {
+    return originalDocs[element]._id;
   });
   logModelList['Mvlog'].find({original_model: modelName}, (err, docs) => {
     if (err) {
@@ -114,11 +114,11 @@ function updateChildrenMv(toUpdateMv, doc_ids) {
 }
 
 // MVの作成
-let createMvDocument = function createMvDocument(modelName, populate, document_id=null) {
+let createMvDocument = function createMvDocument(modelName, populate, documentIds=null) {
   let collectionName = utils.toCollectionName(modelName);
   var query = {};
-  if (document_id) {
-    query._id = document_id;
+  if (documentIds) {
+    query._id = documentIds;
     var logLev = lib.normalLog;
   } else {
     var logLev = lib.lowLog;
@@ -211,7 +211,7 @@ let judgeCreateMv = function judgeCreateMv(callback) {
             let topUserLog = logObject._id;
             // populateの妥当性をチェック
             if (checkPopulateAdequacy(topUserLog.model_name, topUserLog.populate)) {
-              showLog(`Create MV (model_name: ${topUserLog.model_name}, populate: [${topUserLog.populate.join(',')}])`, preTime, lib.topLog);
+              showLog(`Create MV (modelName: ${topUserLog.model_name}, populate: [${topUserLog.populate.join(',')}])`, preTime, lib.topLog);
               createMvDocument(topUserLog.model_name, topUserLog.populate);
               return true;  // ループ文(some)を抜ける
             }
@@ -227,10 +227,10 @@ let judgeCreateMv = function judgeCreateMv(callback) {
 let updateDocuments = function updateDocuments(body ,callback) {
   preTime = performance.now();
   showLog('Starting updateDocuments' ,preTime, lib.topLog);
-  if (!body.model_name || !body.query || !body.update_document) {
+  if (!body.modelName || !body.query || !body.updateDocument) {
     callback({"message": "model_name or body.query or update_document are undefine!"}, null);
   } else {
-    modelList[body.model_name].
+    modelList[body.modelName].
     find(body.query).
     exec(function (err, docs) {
       if (err) {
@@ -240,11 +240,11 @@ let updateDocuments = function updateDocuments(body ,callback) {
       // オリジナルコレクションの更新
       Object.keys(docs).forEach((value) => {
         // updated_atを更新
-        if (!body.update_document.hasOwnProperty('updated_at')) {
-          body.update_document.updated_at = new Date();
+        if (!body.updateDocument.hasOwnProperty('updated_at')) {
+          body.updateDocument.updated_at = new Date();
         }
         // 更新処理
-        Object.assign(docs[value], body.update_document);
+        Object.assign(docs[value], body.updateDocument);
         docs[value].save((err, doc) => {
           if (err) {
             console.log(err);
@@ -257,7 +257,7 @@ let updateDocuments = function updateDocuments(body ,callback) {
         showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", preTime, lib.lowLog);
       } else {
         // オリジナルに関わるMVを更新
-        updateMvDocuments(docs, body.model_name, body.query, body.update_document);
+        updateMvDocuments(docs, body.model_name, body.query, body.updateDocument);
       }
       callback(null, docs);
     });
@@ -290,7 +290,7 @@ let aggregateTest = function aggregateTest(testId, methodName, callback){
 let findOneTest = function findOneTest (body, callback) {
   preTime = performance.now();
   showLog('Starting findOneTest' ,preTime, lib.topLog);
-  modelList[body.model_name].
+  modelList[body.modelName].
   findOne(body.query).
   populate(body.populate).
   exec((err, doc) => {
