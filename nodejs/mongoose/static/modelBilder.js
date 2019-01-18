@@ -6,7 +6,7 @@ require('dotenv').config();
 const env = process.env;
 // 自作外部ファイルのインポート
 const lib = require('./../lib');  // グローバル変数用
-const index = require('./index');
+const index = require('./../index');
 const schemaIndex = require('./schemaIndex');
 const showLog = lib.showLog;
 
@@ -19,7 +19,8 @@ var ObjectId = Schema.Types.ObjectId,
 Mixed = Schema.Types.Mixed;
 
 // 経過時間用
-var preTime = performance.now(), preEndTime, postTime;
+var preEndTime, postTime;
+global.preTimeGlobal = performance.now();
 // populate先モデルリスト
 var populateModelList = {};
 // モデル別populate先リスト
@@ -48,8 +49,7 @@ schemaBilder(logSchemaSeeds, logSchemaList);
 Object.keys(schemaList).forEach(function(value) {
   schemaList[value].pre('findOne', function(next) {
     try {
-      preTime = performance.now();  // showLog用
-      showLog("Prehook | Start", preTime, lib.wasteLog);
+      showLog("Prehook | Start", lib.wasteLog);
       var self = this;
       // クエリログの為に書き換えられる可能性のあるパラメーターを保存
       self.modelName_ori = self.model.modelName;
@@ -58,13 +58,13 @@ Object.keys(schemaList).forEach(function(value) {
       }
 
       if (env.IS_USE_MV != 1) {
-        showLog("Prehook | \"IS_USE_MV\" is set FALSE", preTime, lib.normalLog);
+        showLog("Prehook | \"IS_USE_MV\" is set FALSE", lib.normalLog);
         preEndTime = performance.now();  // クエリログ用
         next();
       } else {
         if (self._mongooseOptions.populate == null) {
           // populateがない
-          showLog("Prehook | End", preTime, lib.wasteLog);
+          showLog("Prehook | End", lib.wasteLog);
           preEndTime = performance.now();  // クエリログ用
           next();
         } else {
@@ -76,18 +76,18 @@ Object.keys(schemaList).forEach(function(value) {
           logModelList['Mvlog'].countDocuments({original_model: modelName, original_coll: collectionName, populate: populate}, function(err, count) {
             if (err) return console.log(err);
             if (count === 1) {
-              showLog('Exist MV.', preTime, lib.lowLog);
+              showLog('Exist MV.', lib.lowLog);
               // クエリをmvに書き換え
               rewriteQueryToMv(self, function(err) {
                 preEndTime = performance.now();  // クエリログ用
                 next(err);
               });
-              showLog("Prehook | End", preTime, lib.wasteLog);
+              showLog("Prehook | End", lib.wasteLog);
               preEndTime = performance.now();  // クエリログ用
               next();
             } else {
-              showLog('NOT Exist MV', preTime, lib.lowLog);
-              showLog("Prehook | End", preTime, lib.wasteLog);
+              showLog('NOT Exist MV', lib.lowLog);
+              showLog("Prehook | End", lib.wasteLog);
               preEndTime = performance.now();  // クエリログ用
               next();
             }
@@ -104,9 +104,8 @@ Object.keys(schemaList).forEach(function(value) {
 Object.keys(schemaList).forEach(function(value) {
   schemaList[value].pre('updateOne', function(next) {
     try {
-      preTime = performance.now();
-      showLog("Prehook | Start", preTime, lib.wasteLog);
-      showLog("Prehook | End", preTime, lib.wasteLog);
+      showLog("Prehook | Start", lib.wasteLog);
+      showLog("Prehook | End", lib.wasteLog);
       preEndTime = performance.now();  // クエリログ用
       next();
     } catch (err) {
@@ -119,15 +118,15 @@ Object.keys(schemaList).forEach(function(value) {
 Object.keys(schemaList).forEach(function(value) {
   schemaList[value].post('findOne', function(doc, next) {
     try {
-      showLog("Posthook | Start", preTime, lib.wasteLog);
+      showLog("Posthook | Start", lib.wasteLog);
       // 処理時間の計算
       postTime = performance.now();
       let elapsedTime = (postTime - preEndTime);
-      showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]ms` ,preTime, lib.normalLog);
+      showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]ms` , lib.normalLog);
       // クエリログの保存
       let self = this;
       queryLog(elapsedTime, self);
-      showLog("Posthook | End", preTime, lib.wasteLog);
+      showLog("Posthook | End", lib.wasteLog);
       next();
     } catch (err) {
       next(err);
@@ -138,18 +137,18 @@ Object.keys(schemaList).forEach(function(value) {
 Object.keys(schemaList).forEach(function(value) {
   schemaList[value].post('updateOne', function(doc, next) {
     try {
-      showLog("Posthook | Start", preTime, lib.wasteLog);
+      showLog("Posthook | Start", lib.wasteLog);
       // 処理時間の計算
       if (doc.modifiedCount) {
         // console.log('変更があった');
       }
       postTime = performance.now();
       let elapsedTime = (postTime - preEndTime);
-      showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]` ,preTime, lib.normalLog);
+      showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]` , lib.normalLog);
       // クエリログの保存
       let self = this;
       queryLog(elapsedTime, self);
-      showLog("Posthook | End", preTime, lib.wasteLog);
+      showLog("Posthook | End", lib.wasteLog);
       next();
     } catch (err) {
       next(err);
@@ -168,11 +167,11 @@ modelBilder(logSchemaList, logModelList);
 
 // Database接続確認
 db.on('error', console.error.bind(console, 'connection error:'));
-showLog('[Process Start]', preTime, lib.topLog);
+showLog('[Process Start]', lib.topLog);
 
 // クエリログの保存
 function queryLog(elapsedTime, obj) {
-  showLog('Writing Query Log', preTime, lib.wasteLog);
+  showLog('Writing Query Log', lib.wasteLog);
   let saveObject = {
     elapsed_time: elapsedTime,
     options: obj.options,
@@ -194,32 +193,6 @@ function queryLog(elapsedTime, obj) {
   });
 }
 
-// MVログの記録
-function createMvLog(modelName, collectionName, populate) {
-  // populate先のモデル名を取得する
-  var populateModel = [];
-  Object.keys(populate).forEach((value) => {
-    populateModel.push(populateModelList[populate[value]]);
-  });
-  let saveObject = {
-    original_model: modelName,
-    original_coll: collectionName,
-    populate: populate,
-    populate_model: populateModel,
-    updated_at: new Date(),
-  };
-  logModelList['Mvlog'].bulkWrite([
-    {
-      updateOne: {
-        filter: {original_model: modelName},  // 各値で検索
-        update: saveObject,  // 更新日を更新
-        upsert: true,  // 存在しなかった場合新規作成する
-        setDefaultsOnInsert: true  // スキーマでdefaultで設定されている値を代入
-      }
-    }
-  ]);
-}
-
 // MV参照へのクエリ書き換え
 function rewriteQueryToMv(query, callback) {
   try {
@@ -235,7 +208,7 @@ function rewriteQueryToMv(query, callback) {
     query._mongooseOptions = "";
     // クエリ書き換えのフラグを立てる
     query._isRewritedQuery = true;
-    showLog('Finish rewrite Query To Mv', preTime, lib.normalLog);
+    showLog('Finish rewrite Query To Mv', lib.normalLog);
   } catch (err) {
     callback(err);
   }
@@ -257,7 +230,7 @@ function mvSchemaBilder(mvSchemaObjects) {
     addLogSchemaToMv(mvSchemaSeeds[value]);
     // Seedからmvスキーマを作成
     mvSchemaObjects[value] = Schema(mvSchemaSeeds[value]);
-    showLog('mvSchemaBilder | ' + value + '\'s mv has created.', preTime, lib.topLog);
+    showLog('mvSchemaBilder | ' + value + '\'s mv has created.', lib.topLog);
   });
 }
 

@@ -5,9 +5,12 @@ const { PerformanceObserver, performance } = require('perf_hooks');
 require('dotenv').config();
 const env = process.env;
 // 外部ファイル
-const main = require('./main');
-const lib = require('./../lib');
-
+const experiment = require('./experiment');
+const lib = require('./lib');
+const find = require('./method/find');
+const mv = require('./method/materializedView');
+const update = require('./method/update');
+const modelBilder = require('./static/modelBilder');
 
 const app = express();
 
@@ -36,139 +39,161 @@ app.post("/test", function(req, res, next){
 app.post("/start", function(req, res, next){
   setGlobalVariable(req.body);
   allJobStartTime = performance.now();
-  lib.showLog(`Start JOB now:${allJobStartTime}`, null, lib.topLog);
+  lib.showLog(`Start JOB now:${allJobStartTime}`, lib.topLog);
   res.json({"code": "200"});
 });
 
 app.post("/finish", function(req, res, next){
   setGlobalVariable(req.body);
   allJobEndTime = performance.now();
-  lib.showLog(`Fishish ALL JOB elapsedTime:${allJobEndTime-allJobStartTime} end: ${allJobEndTime}`, null, lib.topLog);
+  lib.showLog(`Fishish ALL JOB elapsedTime:${allJobEndTime-allJobStartTime} end: ${allJobEndTime}`, lib.topLog);
   res.json({"code": "200"});
 });
 
 app.get("/getModelList", function(req, res, next){
-  let modelList_str = Object.keys(main.modelList).join(',');
-  let ex1ModelList_str = Object.keys(main.ex1ModelList).join(',');
-  res.json({"code": "200", "modelList": modelList_str, "ex1ModelList": ex1ModelList_str,  "populateModelList": main.populateModelList, "populateListForModel": main.populateListForModel});
+  let modelList_str = Object.keys(modelBilder.modelList).join(',');
+  res.json({"code": "200", "modelList": modelList_str, "populateModelList": modelBilder.populateModelList, "populateListForModel": modelBilder.populateListForModel});
 });
 
 app.post("/insertMany", function(req, res, next){
-  setGlobalVariable(req.body);
-  req.body.method = "insertMany";
-  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  if (!Array.isArray(req.body.document)) {
-    res.json({"code": "400", "message": "Document must be Array!"});
-    return;
-  }
-  main.modelList[req.body.modelName].
-  insertMany(req.body.document, (err, docs) => {
-    if (err) {
-      console.log(err);
-      res.send(err);
-      return;
-    }
-    res.json(docs);
-  });
-});
-
-app.post("/findOne", function(req, res, next){
-  setGlobalVariable(req.body);
-  req.body.method = "findeOne";
-  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  main.modelList[req.body.modelName].
-  findOne(req.body.query).
-  populate(req.body.populate).
-  exec(function (err, doc) {
-    if (err) {
-      console.log(err);
-      res.send(err);
-      return;
-    }
-    res.json(doc);
-  });
-});
-
-app.post("/findOneTest", function(req, res, next){
-  setGlobalVariable(req.body);
-  req.body.method = "findeOneTest";
-  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  main.findOneTest(req.body, (err, docs) => {
-    if (err) {
-        // console.log(err);
-        console.log("Error");
+  let requiredVariables = ["modelName", "document"];
+  initPostMethod("insertMany", requiredVariables, req.body, (err) => {
+    if (err) return res.json(err);
+    modelBilder.modelList[req.body.modelName].
+    insertMany(req.body.document, (err, docs) => {
+      if (err) {
+        console.log(err);
         res.send(err);
         return;
       }
       res.json(docs);
+    });
+  });
+});
+
+app.post("/findOne", function(req, res, next){
+  let requiredVariables = ["modelName", "query", "populate"];
+  initPostMethod("findOne", requiredVariables, req.body, (err) => {
+    if (err) return res.json(err);
+    find.findOneDocument(req.body, (err, docs) => {
+      if (err) {
+          // console.log(err);
+          console.log("Error");
+          res.send(err);
+          return;
+        }
+        res.json(docs);
+    });
   });
 });
 
 app.post("/update", function(req, res, next){
-  setGlobalVariable(req.body);
-  req.body.method = "update";
-  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  main.updateDocuments(req.body, function(err, docs) {
-    if (err) {
-      console.log(err);
-      res.send(err);
-      return;
-    }
-    res.json(docs);
-  })
+  let requiredVariables = ["modelName", "query", "updateDocument"];
+  initPostMethod("update", requiredVariables, req.body, (err) => {
+    if (err) return res.json(err);
+    update.updateDocuments(req.body, function(err, docs) {
+      if (err) {
+        console.log(err);
+        res.send(err);
+        return;
+      }
+      res.json(docs);
+    });
+  });
 });
 
 app.post("/createMv", function(req, res, next){
-  setGlobalVariable(req.body);
-  req.body.method = "createMv";
-  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  main.createMvDocument(req.body.modelName, req.body.populate, req.body.documentIds);
-  res.json({"code": "300"});
+  let requiredVariables = ["modelName", "populate"];
+  initPostMethod("createMv", requiredVariables, req.body, (err) => {
+    if (err) return res.json(err);
+    mv.createMvDocument(req.body.modelName, req.body.populate, req.body.documentIds);
+    res.json({"code": "300"});
+  });
 });
 
 app.post("/createMvAll", function(req, res, next){
-  setGlobalVariable(req.body);
-  req.body.method = "createMvAll";
-  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  main.createMvDocumentAll((err, doc) => {
+  let requiredVariables = [];
+  initPostMethod("createMvAll", requiredVariables, req.body, (err) => {
     if (err) return res.json(err);
-    res.json(doc);
+    mv.createMvDocumentAll((err, doc) => {
+      if (err) return res.json(err);
+      res.json(doc);
+    });
   });
 });
 
 app.post("/judgeCreateMv", function(req, res, next){
-  setGlobalVariable(req.body);
-  req.body.method = "judgeCreateMv";
-  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  main.judgeCreateMv(function(err, docs){
+  let requiredVariables = [];
+  initPostMethod("judgeCreateMv", requiredVariables, req.body, (err) => {
     if (err) return res.json(err);
-    res.json(docs);
+    mv.judgeCreateMv(function(err, docs){
+      if (err) return res.json(err);
+      res.json(docs);
+    });
   });
 });
 
 app.post("/aggregateTest", function(req, res, next){
-  setGlobalVariable(req.body);
-  req.body.method = "aggregateTest";
-  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  main.aggregateTest(req.body.testId, req.body.methodName, function(err, docs){
+  let requiredVariables = ["testId", "methodName"];
+  initPostMethod("aggregateTest", requiredVariables, req.body, (err) => {
     if (err) return res.json(err);
-    res.json(docs);
+    experiment.aggregateTest(req.body.testId, req.body.methodName, function(err, docs){
+      if (err) return res.json(err);
+      res.json(docs);
+    });
   });
 });
 
 app.post("/removeCollections", function(req, res, next){
-  setGlobalVariable(req.body);
-  req.body.method = "removeCollections";
-  lib.showLog(`Request: ${JSON.stringify(req.body)}`, null, lib.normalLog);
-  main.removeCollections(req.body, function(err, docs){
+  let requiredVariables = [];
+  initPostMethod("removeCollections", requiredVariables, req.body, (err) => {
     if (err) return res.json(err);
-    res.json(docs);
+    experiment.removeCollections(req.body, function(err, docs){
+      if (err) return res.json(err);
+      res.json(docs);
+    });
   });
 });
 
+// グローバル変数をセット
 function setGlobalVariable(body) {
   global.testId = body.testId;
   global.logLevel = body.logLevel ? body.logLevel : lib.topLog;
   global.processNum = body.processNum;
   global.processNumAll = body.processNumAll;
+  global.preTimeGlobal = performance.now();
+}
+
+// bodyの変数の妥当性をチェック
+function CheckValidityOfVariables(requiredVariables, body, callback) {
+  var hasNotDeclaration = false;
+  Object.keys(requiredVariables).forEach((value) => {
+    if (body[requiredVariables[value]] === undefined) {
+      // 変数が宣言されていない場合, フラグを立てる
+      hasNotDeclaration = true;
+    }
+  });
+  // フラグが立っている場合はエラーを返す
+  if (hasNotDeclaration) {
+    let response = {
+      "erroCode": "Variables Error",
+      "message": `Require Variables are [${requiredVariables}].`};
+      callback(response);
+  } else {
+    callback(null);
+  }
+}
+
+// ポスト関数の初期化
+function initPostMethod(method, requiredVariables, body, callback) {
+  CheckValidityOfVariables(requiredVariables, body, (err) => {
+    if (err) return callback(err);
+    // グローバル変数をセット
+    setGlobalVariable(body);
+    // postメソッド名を埋め込み
+    body.method = method;
+    // ログを出力
+    lib.showLog(`Request: ${JSON.stringify(body)}`, lib.normalLog);
+    callback(null);
+  });
 }

@@ -1,13 +1,13 @@
 const { PerformanceObserver, performance } = require('perf_hooks');
-const index = require('./mongoose/index');
+const index = require('./index');
 
 module.exports = {
   // 経過時間,呼び出し元メソッド,メッセージをログ表示する
-  showLog: function showLog(msg, startTime, logLevel=3) {
+  showLog: function showLog(msg, logLevel=3) {
     if (!global.logLevel || global.logLevel >= logLevel){
       let processMessage = global.processNum && global.processNumAll ? `${global.processNum}/${global.processNumAll}|` : "";
       let callerMessage = showLog.caller.name ? `${showLog.caller.name} | ` : "";
-      let elapsedTime = startTime ? (performance.now() - startTime).toFixed(3) : "NaN";
+      let elapsedTime = global.preTimeGlobal ? (performance.now() - global.preTimeGlobal).toFixed(3) : "NaN";
       console.log(`[${getNowTime()}|${processMessage}${elapsedTime}]${callerMessage}${msg}`);
     }
   },
