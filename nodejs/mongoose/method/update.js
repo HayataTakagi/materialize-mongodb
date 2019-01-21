@@ -16,50 +16,44 @@ const logModelList = modelBilder.logModelList;
 const populateModelList = modelBilder.populateModelList;
 const populateListForModel = modelBilder.populateListForModel;
 
-let startTimeList = [];
-
 // オリジナルコレクション&MV更新処理
 let updateDocuments = function updateDocuments(body ,callback) {
   showLog('Starting updateDocuments' , lib.topLog);
   let processId = body.processId ? body.processId : "NoName";
-  // startTimeList[processId] = performance.now();
-  // modelList[body.modelName].
-  // find(body.query).
-  // exec(function (err, docs) {
-  //   if (err) {
-  //     console.log(err);
-  //     callback(err, null);
-  //   }
-  //   // // オリジナルコレクションの更新
-  //   // Object.keys(docs).forEach((value) => {
-  //   //   // updated_atを更新
-  //   //   if (!body.updateDocument.hasOwnProperty('updated_at')) {
-  //   //     body.updateDocument.updated_at = new Date();
-  //   //   }
-  //   //   // 更新処理
-  //   //   Object.assign(docs[value], body.updateDocument);
-  //   //   docs[value].save((err, doc) => {
-  //   //     if (err) {
-  //   //       console.log(err);
-  //   //       callback(err, null);
-  //   //     }
-  //   //     // TODO: 経過時間測定(Original)
-  //   //     showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, lib.normalLog);
-  //   //   });
-  //   // });
-  //   // if (env.IS_USE_MV != 1) {
-  //   //   showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", lib.lowLog);
-  //   // } else {
-  //   //   // オリジナルに関わるMVを更新
-  //   //   updateMvDocuments(docs, body.modelName, body.query, body.updateDocument, processId);
-  //   // }
-  //   // // console.log(`startTime(${processId}): ${startTimeList[processId]}`);
-  //   // callback(null, docs);
-  //   console.log(docs);
-  // });
-  // console.log(Object.keys(modelBilder.modelList).join(','));
-  console.log(modelBilder.populateListForModel);
-  callback(null, {"code": "ok"});
+  modelBilder.startTimeList[processId] = performance.now();
+  modelList[body.modelName].
+  find(body.query).
+  exec(function (err, docs) {
+    if (err) {
+      console.log(err);
+      callback(err, null);
+    }
+    // オリジナルコレクションの更新
+    Object.keys(docs).forEach((value) => {
+      // updated_atを更新
+      if (!body.updateDocument.hasOwnProperty('updated_at')) {
+        body.updateDocument.updated_at = new Date();
+      }
+      // 更新処理
+      Object.assign(docs[value], body.updateDocument);
+      docs[value].save((err, doc) => {
+        if (err) {
+          console.log(err);
+          callback(err, null);
+        }
+        showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, lib.normalLog);
+      });
+    });
+    if (env.IS_USE_MV != 1) {
+      showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", lib.lowLog);
+    } else {
+      // オリジナルに関わるMVを更新
+      updateMvDocuments(docs, body.modelName, body.query, body.updateDocument, processId);
+    }
+    console.log(`startTime(${processId}): ${modelBilder.startTimeList[processId]}`);
+    modelBilder.queryLogUpdate(processId, body.modelName);
+    callback(null, docs);
+  });
 };
 
 // mvを更新する
@@ -135,8 +129,6 @@ function updateChildrenMv(toUpdateMv, doc_ids, processId) {
 }
 
 module.exports = {
-  // List
-  startTimeList: startTimeList,
   // Method
   // オリジナル&MV更新処理
   updateDocuments: updateDocuments,

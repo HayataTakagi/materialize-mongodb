@@ -8,7 +8,6 @@ const env = process.env;
 const lib = require('./../lib');  // グローバル変数用
 const index = require('./../index');
 const schemaIndex = require('./schemaIndex');
-const update = require('./../method/update');
 const showLog = lib.showLog;
 
 // Mngooseのバッファの設定
@@ -22,6 +21,7 @@ Mixed = Schema.Types.Mixed;
 // 経過時間用
 var preEndTime, postTime;
 global.preTimeGlobal = performance.now();
+let startTimeList = [];
 // populate先モデルリスト
 var populateModelList = {};
 // モデル別populate先リスト
@@ -102,19 +102,6 @@ Object.keys(schemaList).forEach(function(value) {
   });
 });
 
-Object.keys(schemaList).forEach(function(value) {
-  schemaList[value].pre('save', function(next) {
-    try {
-      showLog("Prehook | Start", lib.wasteLog);
-      showLog("Prehook | End", lib.wasteLog);
-      preEndTime = performance.now();  // クエリログ用
-      next();
-    } catch (err) {
-      next(err);
-    }
-  });
-});
-
 // ポストフックの定義 ======================
 Object.keys(schemaList).forEach(function(value) {
   schemaList[value].post('findOne', function(doc, next) {
@@ -127,24 +114,6 @@ Object.keys(schemaList).forEach(function(value) {
       // クエリログの保存
       let self = this;
       queryLogFindOne(elapsedTime, self);
-      showLog("Posthook | End", lib.wasteLog);
-      next();
-    } catch (err) {
-      next(err);
-    }
-  });
-});
-
-Object.keys(schemaList).forEach(function(value) {
-  schemaList[value].post('save', function(doc, next) {
-    try {
-      showLog("Posthook | Start", lib.wasteLog);
-      // 処理時間の計算
-      postTime = performance.now();
-      let elapsedTime = (postTime - preEndTime);
-      showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]` , lib.normalLog);
-      // クエリログの保存
-      queryLogUpdate(elapsedTime);
       showLog("Posthook | End", lib.wasteLog);
       next();
     } catch (err) {
@@ -196,12 +165,12 @@ function queryLogFindOne(elapsedTime, obj) {
 }
 
 // クエリログの保存(update)
-function queryLogUpdate(elapsedTime) {
+let queryLogUpdate = function queryLogUpdate(processId, modelName) {
   showLog('Writing Query Log', lib.wasteLog);
-  console.log("Writing Query Log About Update");
+  let elapsedTime = performance.now() - startTimeList[processId];
   let saveObject = {
     elapsed_time: elapsedTime,
-    model_name: global.modelName,
+    model_name: modelName,
     method: "update",
   };
   // Mongoの禁止語の"$"を"_DOLL_"に置換
@@ -216,7 +185,7 @@ function queryLogUpdate(elapsedTime) {
   logModelList['Userlog'].insertMany(saveObject, function(err, docs) {
     if (err) return console.log(err);
   });
-}
+};
 
 // MV参照へのクエリ書き換え
 function rewriteQueryToMv(query, callback) {
@@ -319,6 +288,7 @@ function modelBilder(schemaObjects, modelObjects, is_mv = false) {
 }
 
 module.exports = {
+  // List
   // モデル本体
   modelList: modelList,
   // MVモデル本体
@@ -329,4 +299,9 @@ module.exports = {
   populateModelList: populateModelList,
   // populate先をモデル別にリスト
   populateListForModel: populateListForModel,
+  // update経過時間計算用
+  startTimeList: startTimeList,
+  // Method
+  // update用クエリログ記録用
+  queryLogUpdate: queryLogUpdate,
 };

@@ -15,7 +15,7 @@ const modelBilder = require('./static/modelBilder');
 const app = express();
 
 // JOBTIME
-var allJobStartTime, allJobEndTime;
+let allJobStartTime, allJobEndTime;
 
 // urlencodedとjsonは別々に初期化する
 app.use(bodyParser.urlencoded({
@@ -52,7 +52,6 @@ app.post("/finish", function(req, res, next){
 
 app.get("/getModelList", function(req, res, next){
   let modelList_str = Object.keys(modelBilder.modelList).join(',');
-  console.log(modelBilder.populateListForModel);
   res.json({"code": "200", "modelList": modelList_str, "populateModelList": modelBilder.populateModelList, "populateListForModel": modelBilder.populateListForModel});
 });
 
@@ -167,7 +166,6 @@ function setGlobalVariable(body) {
 
 // update用グローバル変数をセット
 function setUpdateGlobalVariable(body) {
-  global.modelName = body ? body.modelName : null;
   global.query = body ? body.query : null;
 }
 

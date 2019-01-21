@@ -45,6 +45,7 @@ let createMvDocument = function createMvDocument(modelName, populate, processId,
         mvDocuments[value],  // 保存するobject
         {upsert: true, setDefaultsOnInsert: true},
         (err, res) => {
+          modelBilder.queryLogUpdate(processId, `Mv${modelName}`);
           showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}, now:${performance.now()}`, logLev);
         });
       });
