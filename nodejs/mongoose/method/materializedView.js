@@ -18,7 +18,7 @@ const populateModelList = modelBilder.populateModelList;
 const populateListForModel = modelBilder.populateListForModel;
 
 // MVの作成
-let createMvDocument = function createMvDocument(modelName, populate, documentIds=null) {
+let createMvDocument = function createMvDocument(modelName, populate, processId, documentIds=null) {
   let collectionName = utils.toCollectionName(modelName);
   var query = {};
   if (documentIds) {

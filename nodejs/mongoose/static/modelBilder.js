@@ -8,6 +8,7 @@ const env = process.env;
 const lib = require('./../lib');  // グローバル変数用
 const index = require('./../index');
 const schemaIndex = require('./schemaIndex');
+const update = require('./../method/update');
 const showLog = lib.showLog;
 
 // Mngooseのバッファの設定
@@ -102,7 +103,7 @@ Object.keys(schemaList).forEach(function(value) {
 });
 
 Object.keys(schemaList).forEach(function(value) {
-  schemaList[value].pre('updateOne', function(next) {
+  schemaList[value].pre('save', function(next) {
     try {
       showLog("Prehook | Start", lib.wasteLog);
       showLog("Prehook | End", lib.wasteLog);
@@ -125,7 +126,7 @@ Object.keys(schemaList).forEach(function(value) {
       showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]ms` , lib.normalLog);
       // クエリログの保存
       let self = this;
-      queryLog(elapsedTime, self);
+      queryLogFindOne(elapsedTime, self);
       showLog("Posthook | End", lib.wasteLog);
       next();
     } catch (err) {
@@ -135,19 +136,15 @@ Object.keys(schemaList).forEach(function(value) {
 });
 
 Object.keys(schemaList).forEach(function(value) {
-  schemaList[value].post('updateOne', function(doc, next) {
+  schemaList[value].post('save', function(doc, next) {
     try {
       showLog("Posthook | Start", lib.wasteLog);
       // 処理時間の計算
-      if (doc.modifiedCount) {
-        // console.log('変更があった');
-      }
       postTime = performance.now();
       let elapsedTime = (postTime - preEndTime);
       showLog(`This Query's elapsedTime is [[ ${elapsedTime} ]]` , lib.normalLog);
       // クエリログの保存
-      let self = this;
-      queryLog(elapsedTime, self);
+      queryLogUpdate(elapsedTime);
       showLog("Posthook | End", lib.wasteLog);
       next();
     } catch (err) {
@@ -169,8 +166,8 @@ modelBilder(logSchemaList, logModelList);
 db.on('error', console.error.bind(console, 'connection error:'));
 showLog('[Process Start]', lib.topLog);
 
-// クエリログの保存
-function queryLog(elapsedTime, obj) {
+// クエリログの保存(findOne)
+function queryLogFindOne(elapsedTime, obj) {
   showLog('Writing Query Log', lib.wasteLog);
   let saveObject = {
     elapsed_time: elapsedTime,
@@ -178,8 +175,12 @@ function queryLog(elapsedTime, obj) {
     collection_name: obj.mongooseCollection.collection.s.name,
     model_name: obj.modelName_ori,
     method: obj.op,
-    query: obj._conditions,
   };
+  // Mongoの禁止語の"$"を"_DOLL_"に置換
+  if (obj._conditions) {
+    let queryStr = String(JSON.stringify(obj._conditions));
+    saveObject.query = queryStr.replace(/\$/g, '_DOLL_');
+  }
   if (obj.hasOwnProperty("_mongooseOptions_ori")) {
     saveObject.populate = Object.keys(obj._mongooseOptions_ori.populate);
   }
@@ -188,6 +189,30 @@ function queryLog(elapsedTime, obj) {
   }
   // クエリが書き換えられたかどうか
   saveObject.is_rewrited = obj._isRewritedQuery ? 1 : 0;
+  // ログをDBに書き込み
+  logModelList['Userlog'].insertMany(saveObject, function(err, docs) {
+    if (err) return console.log(err);
+  });
+}
+
+// クエリログの保存(update)
+function queryLogUpdate(elapsedTime) {
+  showLog('Writing Query Log', lib.wasteLog);
+  console.log("Writing Query Log About Update");
+  let saveObject = {
+    elapsed_time: elapsedTime,
+    model_name: global.modelName,
+    method: "update",
+  };
+  // Mongoの禁止語の"$"を"_DOLL_"に置換
+  if (global.query) {
+    let queryStr = String(JSON.stringify(global.query));
+    saveObject.query = queryStr.replace(/\$/g, '_DOLL_');
+  }
+  if (global.testId) {
+    saveObject.test_id = global.testId;
+  }
+  // ログをDBに書き込み
   logModelList['Userlog'].insertMany(saveObject, function(err, docs) {
     if (err) return console.log(err);
   });

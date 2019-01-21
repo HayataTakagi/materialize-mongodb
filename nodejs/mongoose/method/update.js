@@ -5,7 +5,7 @@ const env = process.env;
 // 自作外部ファイルのインポート
 const modelBilder = require('./../static/modelBilder');
 const lib = require('./../lib');
-const mv = require('./materializedView')
+const mv = require('./materializedView');
 const showLog = lib.showLog;
 
 // モデルリストの定義
@@ -16,48 +16,54 @@ const logModelList = modelBilder.logModelList;
 const populateModelList = modelBilder.populateModelList;
 const populateListForModel = modelBilder.populateListForModel;
 
+let startTimeList = [];
+
 // オリジナルコレクション&MV更新処理
 let updateDocuments = function updateDocuments(body ,callback) {
   showLog('Starting updateDocuments' , lib.topLog);
-  if (!body.modelName || !body.query || !body.updateDocument) {
-    callback({"message": "modelName or query or updateDocument are undefine!"}, null);
-  } else {
-    modelList[body.modelName].
-    find(body.query).
-    exec(function (err, docs) {
-      if (err) {
-        console.log(err);
-        callback(err, null);
-      }
-      // オリジナルコレクションの更新
-      Object.keys(docs).forEach((value) => {
-        // updated_atを更新
-        if (!body.updateDocument.hasOwnProperty('updated_at')) {
-          body.updateDocument.updated_at = new Date();
-        }
-        // 更新処理
-        Object.assign(docs[value], body.updateDocument);
-        docs[value].save((err, doc) => {
-          if (err) {
-            console.log(err);
-            callback(err, null);
-          }
-          showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, lib.normalLog);
-        });
-      });
-      if (env.IS_USE_MV != 1) {
-        showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", lib.lowLog);
-      } else {
-        // オリジナルに関わるMVを更新
-        updateMvDocuments(docs, body.modelName, body.query, body.updateDocument);
-      }
-      callback(null, docs);
-    });
-  }
+  let processId = body.processId ? body.processId : "NoName";
+  // startTimeList[processId] = performance.now();
+  // modelList[body.modelName].
+  // find(body.query).
+  // exec(function (err, docs) {
+  //   if (err) {
+  //     console.log(err);
+  //     callback(err, null);
+  //   }
+  //   // // オリジナルコレクションの更新
+  //   // Object.keys(docs).forEach((value) => {
+  //   //   // updated_atを更新
+  //   //   if (!body.updateDocument.hasOwnProperty('updated_at')) {
+  //   //     body.updateDocument.updated_at = new Date();
+  //   //   }
+  //   //   // 更新処理
+  //   //   Object.assign(docs[value], body.updateDocument);
+  //   //   docs[value].save((err, doc) => {
+  //   //     if (err) {
+  //   //       console.log(err);
+  //   //       callback(err, null);
+  //   //     }
+  //   //     // TODO: 経過時間測定(Original)
+  //   //     showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, lib.normalLog);
+  //   //   });
+  //   // });
+  //   // if (env.IS_USE_MV != 1) {
+  //   //   showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", lib.lowLog);
+  //   // } else {
+  //   //   // オリジナルに関わるMVを更新
+  //   //   updateMvDocuments(docs, body.modelName, body.query, body.updateDocument, processId);
+  //   // }
+  //   // // console.log(`startTime(${processId}): ${startTimeList[processId]}`);
+  //   // callback(null, docs);
+  //   console.log(docs);
+  // });
+  // console.log(Object.keys(modelBilder.modelList).join(','));
+  console.log(modelBilder.populateListForModel);
+  callback(null, {"code": "ok"});
 };
 
 // mvを更新する
-function updateMvDocuments(originalDocs, modelName, query, updateDocument) {
+function updateMvDocuments(originalDocs, modelName, query, updateDocument, processId) {
   // MVコレクションの更新
   // MV更新処理(parent)
   showLog("(PARENT-POPULATE)Start updating MvDocuments" , lib.normalLog);
@@ -75,7 +81,7 @@ function updateMvDocuments(originalDocs, modelName, query, updateDocument) {
       showLog(`updateMvDocuments | (PARENT-POPULATE)NOT Updating ${modelName}'s MV collection BECAUSE ${modelName} doesn't have MV.` , lib.normalLog);
     } else {
       showLog(`updateMvDocuments | (PARENT-POPULATE)Updating ${modelName}'s MV collection.`, lib.normalLog);
-      mv.createMvDocument(modelName, docs[0].populate, doc_ids);
+      mv.createMvDocument(modelName, docs[0].populate, processId, doc_ids);
     }
   });
 
@@ -104,13 +110,13 @@ function updateMvDocuments(originalDocs, modelName, query, updateDocument) {
           }
         });
       });
-      updateChildrenMv(toUpdateMv, doc_ids);
+      updateChildrenMv(toUpdateMv, doc_ids, processId);
     }
   });
 }
 
 // populate先のMV更新
-function updateChildrenMv(toUpdateMv, doc_ids) {
+function updateChildrenMv(toUpdateMv, doc_ids, processId) {
   Object.keys(toUpdateMv).forEach(modelName_key => {
     Object.keys(toUpdateMv[modelName_key]).forEach(populate_key => {
       let path = toUpdateMv[modelName_key][populate_key] + '._id';
@@ -122,13 +128,15 @@ function updateChildrenMv(toUpdateMv, doc_ids) {
           return docs[element]._id;
         });
         showLog(`updateChildrenMv | (CHILDREN-POPULATE)Updating populate-MV ${to_update_ids.length} docs in ${modelName_key}`, lib.lowLog);
-        mv.createMvDocument(modelName_key, docs[0].log_populate, to_update_ids);
+        mv.createMvDocument(modelName_key, docs[0].log_populate, processId, to_update_ids);
       });
     });
   });
 }
 
 module.exports = {
+  // List
+  startTimeList: startTimeList,
   // Method
   // オリジナル&MV更新処理
   updateDocuments: updateDocuments,

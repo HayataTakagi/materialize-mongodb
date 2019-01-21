@@ -52,6 +52,7 @@ app.post("/finish", function(req, res, next){
 
 app.get("/getModelList", function(req, res, next){
   let modelList_str = Object.keys(modelBilder.modelList).join(',');
+  console.log(modelBilder.populateListForModel);
   res.json({"code": "200", "modelList": modelList_str, "populateModelList": modelBilder.populateModelList, "populateListForModel": modelBilder.populateListForModel});
 });
 
@@ -164,6 +165,12 @@ function setGlobalVariable(body) {
   global.preTimeGlobal = performance.now();
 }
 
+// update用グローバル変数をセット
+function setUpdateGlobalVariable(body) {
+  global.modelName = body ? body.modelName : null;
+  global.query = body ? body.query : null;
+}
+
 // bodyの変数の妥当性をチェック
 function CheckValidityOfVariables(requiredVariables, body, callback) {
   var hasNotDeclaration = false;
@@ -190,6 +197,8 @@ function initPostMethod(method, requiredVariables, body, callback) {
     if (err) return callback(err);
     // グローバル変数をセット
     setGlobalVariable(body);
+    // update用グローバル変数セット
+    setUpdateGlobalVariable(method === 'update' ? body : null);
     // postメソッド名を埋め込み
     body.method = method;
     // ログを出力
