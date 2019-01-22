@@ -91,6 +91,8 @@ app.post("/update", function(req, res, next){
   let requiredVariables = ["modelName", "query", "updateDocument"];
   initPostMethod("update", requiredVariables, req.body, (err) => {
     if (err) return res.json(err);
+    // 時間測定用のprocessIdを設定
+    req.body.processId = createProcessId(req.body.processNum);
     update.updateDocuments(req.body, function(err, docs) {
       if (err) {
         console.log(err);
@@ -133,11 +135,22 @@ app.post("/judgeCreateMv", function(req, res, next){
   });
 });
 
-app.post("/aggregateTest", function(req, res, next){
+app.post("/aggregateTestFineOne", function(req, res, next){
   let requiredVariables = ["testId", "methodName"];
-  initPostMethod("aggregateTest", requiredVariables, req.body, (err) => {
+  initPostMethod("aggregateTestFineOne", requiredVariables, req.body, (err) => {
     if (err) return res.json(err);
-    experiment.aggregateTest(req.body.testId, req.body.methodName, function(err, docs){
+    experiment.aggregateTestFineOne(req.body.testId, req.body.methodName, function(err, docs){
+      if (err) return res.json(err);
+      res.json(docs);
+    });
+  });
+});
+
+app.post("/aggregateTestUpdate", function(req, res, next){
+  let requiredVariables = ["testId", "methodName"];
+  initPostMethod("aggregateTestUpdate", requiredVariables, req.body, (err) => {
+    if (err) return res.json(err);
+    experiment.aggregateTestUpdate(req.body.testId, req.body.methodName, function(err, docs){
       if (err) return res.json(err);
       res.json(docs);
     });
@@ -203,4 +216,10 @@ function initPostMethod(method, requiredVariables, body, callback) {
     lib.showLog(`Request: ${JSON.stringify(body)}`, lib.normalLog);
     callback(null);
   });
+}
+
+// processId設定
+function createProcessId(processNum) {
+  let today = new Date();
+  return `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}|${today.getHours()}:${today.getMinutes()}-${('0'+processNum).slice(-2)}`;
 }

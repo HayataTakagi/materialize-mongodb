@@ -105,6 +105,7 @@ const logSeedObjects = {
     populate: [ String ],
     is_rewrited: Boolean,
     test_id: Number,
+    process_id: String,
     date: {type: Date, default: Date.now},
   }, "mvlogSchema": {
     _id: ObjectId,

@@ -21,6 +21,8 @@ Mixed = Schema.Types.Mixed;
 // 経過時間用
 var preEndTime, postTime;
 global.preTimeGlobal = performance.now();
+// updateメソッド測定用
+// サーバーのRunningTimeが続くほどキャッシュが増える為実験時にはReStart推奨
 let startTimeList = [];
 // populate先モデルリスト
 var populateModelList = {};
@@ -172,6 +174,7 @@ let queryLogUpdate = function queryLogUpdate(processId, modelName) {
     elapsed_time: elapsedTime,
     model_name: modelName,
     method: "update",
+    process_id: processId,
   };
   // Mongoの禁止語の"$"を"_DOLL_"に置換
   if (global.query) {

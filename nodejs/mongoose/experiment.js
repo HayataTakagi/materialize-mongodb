@@ -24,8 +24,9 @@ mongoose.set('bufferCommands', true);
 mongoose.connect(`mongodb://${env.DB_IP}/${env.DB_NAME}`, { useNewUrlParser: true });
 var db = mongoose.connection;
 
-// testの集計
-let aggregateTest = function aggregateTest(testId, methodName, callback){
+// testの集計(findOne)
+let aggregateTestFineOne = function aggregateTestFineOne(testId, methodName, callback){
+  showLog('Starting aggregateTestFineOne', lib.topLog);
   logModelList['Userlog'].aggregate([
     { $match: {
       test_id: testId,
@@ -41,7 +42,35 @@ let aggregateTest = function aggregateTest(testId, methodName, callback){
   ]).
   exec((err, docs) => {
     if (err) callback(err, null);
-    console.log(docs);
+    callback(null, docs);
+  });
+};
+
+// testの集計(update)
+let aggregateTestUpdate = function aggregateTestUpdate(testId, methodName, callback){
+  showLog('Starting aggregateTestUpdate', lib.topLog);
+  logModelList['Userlog'].aggregate([
+    { $match: {
+      test_id: testId,
+    }},
+    { $group: {
+      _id: {method: "$method", process_id: "$process_id"},
+      total_time: { $sum: "$elapsed_time"},
+      average_time: { $avg: "$elapsed_time"},
+      max_time: { $max: "$elapsed_time"},
+      count: { $sum: 1},
+    }},
+    { $group: {
+      _id: {method: "method"},
+      total_time: { $sum: "$max_time"},
+      average_time: { $avg: "$max_time"},
+      query_count: { $sum: 1},
+      update_count: { $sum: "$count"},
+    }},
+    { $sort: { "_id.process_id": 1}}
+  ]).
+  exec((err, docs) => {
+    if (err) callback(err, null);
     callback(null, docs);
   });
 };
@@ -90,7 +119,8 @@ let removeCollections = function removeCollections (body, callback) {
 
 module.exports = {
   // テストの集計
-  aggregateTest: aggregateTest,
+  aggregateTestFineOne: aggregateTestFineOne,
+  aggregateTestUpdate: aggregateTestUpdate,
   // データベースの削除
   removeCollections: removeCollections
 };

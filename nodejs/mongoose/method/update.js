@@ -42,6 +42,7 @@ let updateDocuments = function updateDocuments(body ,callback) {
           callback(err, null);
         }
         showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, lib.normalLog);
+        modelBilder.queryLogUpdate(processId, body.modelName);  // ログ書き込み
       });
     });
     if (env.IS_USE_MV != 1) {
@@ -50,8 +51,6 @@ let updateDocuments = function updateDocuments(body ,callback) {
       // オリジナルに関わるMVを更新
       updateMvDocuments(docs, body.modelName, body.query, body.updateDocument, processId);
     }
-    console.log(`startTime(${processId}): ${modelBilder.startTimeList[processId]}`);
-    modelBilder.queryLogUpdate(processId, body.modelName);
     callback(null, docs);
   });
 };
