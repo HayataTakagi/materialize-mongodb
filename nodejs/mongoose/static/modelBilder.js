@@ -145,6 +145,7 @@ function queryLogFindOne(elapsedTime, obj) {
     options: obj.options,
     collection_name: obj.mongooseCollection.collection.s.name,
     model_name: obj.modelName_ori,
+    ori_model_name: obj.modelName_ori,
     method: obj.op,
   };
   // Mongoの禁止語の"$"を"_DOLL_"に置換
@@ -167,15 +168,17 @@ function queryLogFindOne(elapsedTime, obj) {
 }
 
 // クエリログの保存(update)
-let queryLogUpdate = function queryLogUpdate(processId, modelName) {
+let queryLogUpdate = function queryLogUpdate(processId, modelName, mvModelName=null) {
   showLog('Writing Query Log', lib.wasteLog);
   let elapsedTime = performance.now() - startTimeList[processId];
   let saveObject = {
     elapsed_time: elapsedTime,
-    model_name: modelName,
+    ori_model_name: modelName,
+    model_name: mvModelName ? mvModelName : modelName,
     method: "update",
     process_id: processId,
   };
+
   // Mongoの禁止語の"$"を"_DOLL_"に置換
   if (global.query) {
     let queryStr = String(JSON.stringify(global.query));

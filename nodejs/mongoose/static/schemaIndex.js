@@ -99,6 +99,7 @@ const logSeedObjects = {
     elapsed_time: Number,
     options: Mixed,
     collection_name: String,
+    ori_model_name: String,
     model_name: String,
     method: String,
     query: Mixed,

@@ -74,7 +74,7 @@ function updateMvDocuments(originalDocs, modelName, query, updateDocument, proce
       showLog(`updateMvDocuments | (PARENT-POPULATE)NOT Updating ${modelName}'s MV collection BECAUSE ${modelName} doesn't have MV.` , lib.normalLog);
     } else {
       showLog(`updateMvDocuments | (PARENT-POPULATE)Updating ${modelName}'s MV collection.`, lib.normalLog);
-      mv.createMvDocument(modelName, docs[0].populate, processId, doc_ids);
+      mv.createMvDocument(modelName, docs[0].populate, processId, modelName, doc_ids);
     }
   });
 
@@ -103,13 +103,13 @@ function updateMvDocuments(originalDocs, modelName, query, updateDocument, proce
           }
         });
       });
-      updateChildrenMv(toUpdateMv, doc_ids, processId);
+      updateChildrenMv(toUpdateMv, doc_ids, processId, modelName);
     }
   });
 }
 
 // populate先のMV更新
-function updateChildrenMv(toUpdateMv, doc_ids, processId) {
+function updateChildrenMv(toUpdateMv, doc_ids, processId, parentModelName) {
   Object.keys(toUpdateMv).forEach(modelName_key => {
     Object.keys(toUpdateMv[modelName_key]).forEach(populate_key => {
       let path = toUpdateMv[modelName_key][populate_key] + '._id';
@@ -121,7 +121,7 @@ function updateChildrenMv(toUpdateMv, doc_ids, processId) {
           return docs[element]._id;
         });
         showLog(`updateChildrenMv | (CHILDREN-POPULATE)Updating populate-MV ${to_update_ids.length} docs in ${modelName_key}`, lib.lowLog);
-        mv.createMvDocument(modelName_key, docs[0].log_populate, processId, to_update_ids);
+        mv.createMvDocument(modelName_key, docs[0].log_populate, processId, parentModelName, to_update_ids);
       });
     });
   });

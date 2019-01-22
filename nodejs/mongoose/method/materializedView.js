@@ -18,7 +18,7 @@ const populateModelList = modelBilder.populateModelList;
 const populateListForModel = modelBilder.populateListForModel;
 
 // MVの作成
-let createMvDocument = function createMvDocument(modelName, populate, processId, documentIds=null) {
+let createMvDocument = function createMvDocument(modelName, populate, processId, parentModelName, documentIds=null) {
   let collectionName = utils.toCollectionName(modelName);
   var query = {};
   if (documentIds) {
@@ -45,7 +45,9 @@ let createMvDocument = function createMvDocument(modelName, populate, processId,
         mvDocuments[value],  // 保存するobject
         {upsert: true, setDefaultsOnInsert: true},
         (err, res) => {
-          modelBilder.queryLogUpdate(processId, `Mv${modelName}`);
+          if (processId) {
+            modelBilder.queryLogUpdate(processId, parentModelName, `Mv${modelName}`);
+          }
           showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}, now:${performance.now()}`, logLev);
         });
       });
@@ -65,7 +67,7 @@ let createMvDocument = function createMvDocument(modelName, populate, processId,
 let createMvDocumentAll = function createMvDocumentAll(callback) {
   showLog('Starting createMvDocumentAll', lib.topLog);
   Object.keys(populateListForModel).forEach(value => {
-    createMvDocument(value, populateListForModel[value]);
+    createMvDocument(value, populateListForModel[value], value, null);
   });
   callback(null, {"message": "ok"});
 };
