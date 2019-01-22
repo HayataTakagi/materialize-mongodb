@@ -221,5 +221,6 @@ function initPostMethod(method, requiredVariables, body, callback) {
 // processId設定
 function createProcessId(processNum) {
   let today = new Date();
-  return `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}|${today.getHours()}:${today.getMinutes()}-${('0'+processNum).slice(-2)}`;
+  let processStr = processNum !== undefined ? ('0'+processNum).slice(-2) : `${today.getSeconds()}:${today.getMilliseconds()}`;
+  return `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}|${today.getHours()}:${today.getMinutes()}-${processStr}`;
 }
