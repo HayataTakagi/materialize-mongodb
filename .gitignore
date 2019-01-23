@@ -20,3 +20,4 @@ python/fixtures/components
 *.fls
 *.fdb_latexmk
 *.lof
+*.lot

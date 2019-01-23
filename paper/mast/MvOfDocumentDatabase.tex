@@ -8,6 +8,8 @@
 %\usepackage{epsbox} % for \epsfile{file=sample.eps,scale=0.6}
 
 \usepackage{times} % use Times Font instead of Computer Modern
+% \usepackage{listings} % for soursecode
+% \usepackage{plistings} % for soursecode
 
 \setcounter{tocdepth}{3}
 \setcounter{page}{-1}
@@ -55,7 +57,7 @@
 	{\bf 概要}
 	\vspace{5mm}
 \end{center}
-本論文ではNoSQLの一種であるドキュメント指向データベースに実体化ビューを導入する事によって問い合わせ処理を高速化する手法を提案する．ドキュメント指向データベースでは従来のリレーショナルデータベースにあったような参照型のデータ構造に加えて埋込型のデータ構造を選択できる．参照先の内容を埋め込む事によって結合処理をしなくて済むが，ファイルサイズが大きくなる傾向にあり，フラグメンテーションが発生し，逆にパフォーマンスが落ちる可能性がある．そこで本手法ではリレーショナルデータベースで実現されている実体化ビューの概念をNoSQLにも応用する事で，問い合わせ処理を自動的に高速化する．具体的には，頻繁に問い合わせのある結合処理や集計処理を自動的に検知してその部分のみ予め実体化することでデータベースアクセスの高速化を実現している．
+本論文ではNoSQLの一種であるドキュメント指向データベースに実体化ビューを導入する事によって問い合わせ処理を高速化する手法を提案する．ドキュメント指向データベースでは従来のリレーショナルデータベースにあったような参照型のデータ構造に加えて埋込型のデータ構造を選択できる．参照先の内容を埋め込む事によって結合処理をしなくて済むが，ファイルサイズが大きくなる傾向にあり，フラグメンテーションが発生し，逆にパフォーマンスが落ちる可能性がある．そこで本手法ではリレーショナルデータベースで実現されている実体化ビューの概念をNoSQLにも応用する事で，問い合わせ処理を自動的に高速化する．具体的には，頻繁に問い合わせのある結合処理や集計処理を自動的に検知してその部分のみ予め実体化することでデータベースアクセスの高速化を実現している．実体化する箇所の選択を自動化することにより，データベースシステム管理者が行なっていた作業を簡略化し，客観的で正確な実体化ビュー選択が可能となる．
 
 %%%%%
 \par
@@ -65,13 +67,14 @@
 \pagenumbering{roman} % I, II, III, IV
 \tableofcontents
 \listoffigures
-%\listoftables
+\listoftables
 
 \pagebreak \setcounter{page}{1}
 \pagenumbering{arabic} % 1,2,3
 
 
 \chapter{はじめに}
+\label{chap:Introduction}
 
 数年前までは主要なデータストアとして，リレーショナルデータベースがあげられることがほとんどであった．それは多くの開発者がSQLに慣れ親しんでおり，正規化されたデータモデル，トランザクションの必要性，耐久性のあるストレージエンジンが提供する保証を受けられるからである\cite{Sky株式会社201212}．しかし近年高いスケーラビリティや大量なデータ処理が得意であることなどからNoSQLに対する需要が急激に増えている．
 
@@ -79,18 +82,60 @@
 
 一方でドキュメント指向データベースの特徴とも言える階層的なデータモデルが更新処理速度の低下やデータ参照の柔軟性を低下を招くことがある．これを防ぐためにはドキュメントに階層的に埋め込むフィールドを適切に選択する必要がある．本論文ではこの選択の自動化し，ドキュメント指向データベースのデータモデルのチューニングを行い，データアクセスを高速化する．
 
-本論文の構成は以下の通りである．まず，第2章において関連研究について紹介する．次に，第3章において本研究の提案手法について説明をし，第4章にて提案手法に関する実験を行う．第5章において実験の結果と考察を述べ，最後に第6章において本論文のまとめと今後の課題を示す．
+本論文の構成は以下の通りである．まず，第\ref{chap:LiteratureReview}章において関連研究について紹介する．次に，第\ref{chap:ProposedAlgorithm}章において本研究の提案手法について説明をし，第\ref{chap:Experiment}章にて提案手法に関する実験を行い，提案手法の有効性を確める．第\ref{chap:Result}章において実験の結果と考察を述べ，最後に第\ref{chap:Conclusion}章において本論文のまとめと今後の課題を示す．
 
 \chapter{関連技術}
+\label{chap:LiteratureReview}
 \section{Materialized View}
-リレーショナルデータベースにおけるビュー (view) はリレーショナルデータモデルの発案者であるコッドにより導入された概念であり\cite{Codd1974RecentII}，1つ以上の表（または他のビュー）から任意のデータを選択し，それらを表したものである．ビューの実体はデータを持たないSQL文であり，実行された際にはバックグラウンドでSELECT処理が毎回実行される．それに対して実体化ビュー（Materialized View）はビューと同じく複数の表の結合処理や集計処理を行うが，その結果を実際のテーブルに保持する．保持された実体化ビューは元のテーブルが更新されるたびに更新される．そのため，最新でない状態を取得する可能性はあるが，結合処理が必要ないため効率的なアクセスが可能になる．その一方，更新処理が増加するので実体化ビュー化する部分の選択は慎重に行う必要があり，この作業を自動化する研究が行われている\cite{mistry2001materialized}．図\ref{figure:MvDescription}は実体化ビューを図示したものである．
+リレーショナルデータベースにおけるビュー (view) はリレーショナルデータモデルの発案者であるコッドにより導入された概念であり\cite{Codd1974RecentII}，1つ以上の表（または他のビュー）から任意のデータを選択し，それらを表したものである．ビューの実体はデータを持たないSQL文であり，実行された際にはバックグラウンドでSELECT処理が毎回実行される．それに対して実体化ビュー（Materialized View）はビューと同じく複数の表の結合処理や集計処理を行うが，その結果を実際のテーブルに保持する．保持された実体化ビューは元のテーブルが更新されるたびに更新される．そのため，最新でない状態を取得する可能性はあるが，結合処理が必要ないため効率的なアクセスが可能になる．その一方，更新処理が増加するので実体化ビュー化する部分の選択は慎重に行う必要があり，この作業を自動化する研究が行われている\cite{mistry2001materialized}．図\ref{figure:MvDescription}は1対1のデータモデルの実体化ビューを図示したものである．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em, trim=0 5em 0 0]{src/MvDescription.eps} %[trim=left bottom right top]
+		\includegraphics[width=32em, trim=0 5em 0 0]{src/MvDescription.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{実体化ビュー}
 	\label{figure:MvDescription}
 \end{figure}
+
+
+多対多の結合を表す際には中間テーブルを用意してそれぞれのテーブルからレコードを結合する．その際の流れを図\ref{figure:MvDescription2}に示す．履修中間テーブルに生徒idと授業idを格納している．idが00001の生徒が履修している授業を取得する際には履修中間テーブルのstudent\_idが00001のレコードを取得し，付随するclass\_idを用いて授業の情報を取得する．結合元のテーブルのレコード数が無数にある場合には結合元テーブルでの検索時間が増加し，結合元のテーブルのレコード数の増加と共に中間テーブルのレコード数も増える傾向にあるので，中間テーブルでの検索時間も増加する．
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=32em, trim=0 5em 0 0]{src/MvDescription2.eps} %[trim=left bottom right top]
+	\end{center}
+	\caption{多対多の結合}
+	\label{figure:MvDescription2}
+\end{figure}
+Materialized Viewを用いた際のメリットとして，結合処理や集計処理が不要になり高速化することに加え，問い合わせに用いるSQL文が簡素化することが挙げられる．表\ref{table:mv_sql}は図\ref{figure:MvDescription2}の生徒テーブルをstudent，授業テーブルをclass，履修中間テーブルをcourse\_selection，生徒の履修結合結果を得るために作成したMaterialized Viewをmv\_course\_selectionとした際に，idが00001の生徒が履修している授業を取得するSQL文をMaterialized Viewを使用する場合としない場合を比較したものである．
+\begin{table}[htb]
+  \begin{center}
+    \caption{生徒テーブルと授業テーブルを結合するSQL}
+		\label{table:mv_sql}
+    \begin{tabular}{|l|l|} \hline
+			\begin{tabular}{l}
+				Materialized Viewを\\使用しない
+			\end{tabular} &
+			\begin{tabular}{l}
+				SELECT student.id AS student\_id,
+				class.id AS class\_id,\\
+				student.name AS student\_name,
+				class.name AS class\_name,\\
+				class.teacher AS teacher\\
+				FROM student, class, course\_selection \\
+				WHERE course\_selection.student\_id = 00001 AND\\ course\_selection.student\_id = student.id AND\\ course\_selection.class\_id = class.id;\\
+			\end{tabular}\\
+			 \hline
+			 \begin{tabular}{l}
+ 				Materialized Viewを\\使用する
+ 			\end{tabular} &
+			\begin{tabular}{l}
+				SELECT student\_id, class\_id, student\_name, class\_name, teacher\\
+				FROM mv\_course\_selection\\
+				WHERE student\_id = 00001;
+			\end{tabular}
+			\\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
 
 \section{NoSQL}
 NoSQLとは，“Not only SQL”の略称であり，SQLを用いないデータベースの総称を表す \cite{太田201204}．情報の大規模化が進み，ビッグデータと呼ばれる概念が登場すると共に，構造が複雑な様々なデータが登場するようになった．NoSQLは，そのような複雑な構造のデータに柔軟に対応し処理を行うことができる．GoogleやAmazon，Twitterなど，世界的規模を誇る企業がNoSQLデータベースを利用しており，今後ますますデータの大規模化が進む現代社会において，重要な役割を果たすデータベースである\cite{太田201204}．
@@ -100,48 +145,118 @@ NoSQLデータベースはキー・バリュー型，カラム指向型，ドキ
 MongoDBとは，JSONやXMLなどの形式で記述されたドキュメント指向型のデータを扱うNoSQLデータベースの代表的なものの一つである．RDBとは違い，スキーマの定義を必要としない\cite{太田201204}\cite{mongodb}．また，JSON形式のデータを扱うため，Webシステムなどに利用しやすい．
 MongoDBにおいては，RDBのテーブルにあたるものとしてコレクション，RDBの行にあたるものとしてドキュメント，RDBの列にあたるものとしてフィールドというデータ構想が使われる．
 
+MongoDBではデータの格納にJSONをバイナリエンコーディングしたBSON形式を用いる\cite{Harrison201512}．RDBMSとMongoDBにおける一般的な検索のクエリを表\ref{table:RDB_Mongo_Find}に，更新のクエリを表\ref{table:RDB_Mongo_Update}に示す．
+また，MongoDBはクエリの結果をJSON形式で返す．返却されるクエリセットの例を図\ref{MongoJson}に示す．
+\begin{table}[htb]
+  \begin{center}
+    \caption{RDBMSとMongoDBにおける検索クエリ}
+		\label{table:RDB_Mongo_Find}
+    \begin{tabular}{|c|l|} \hline
+			RDBMS & SELECT * FROM comments WHERE story = "Next Generations";\\ \hline
+			MongoDB & db.comments.find(\{story: "Next Generations"\});\\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+\begin{table}[htb]
+  \begin{center}
+    \caption{RDBMSとMongoDBにおける更新クエリ}
+		\label{table:RDB_Mongo_Update}
+    \begin{tabular}{|c|l|} \hline
+			RDBMS & UPDATE comments SET story = "Next Generations 2" WHERE story = "Next Generations";\\ \hline
+			MongoDB & db.comments.update(\{story: "Next Generations"\}, \{\$set: \{story: "Next Generations 2"\}\});\\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em, trim=10em 18em 10em 0em]{src/MongoJson.eps} %[trim=left bottom right top]
+	\end{center}
+	\caption{MongoDBから返されるクエリセットの例}
+	\label{MongoJson}
+\end{figure}
+
+
+
 \section{Restful API}
 RESTとはRoy Fieldingが提唱した概念であり\cite{fielding2000architectural}，“REpresentational State Transfer”の略である．分散システムにおける複数のソフトウェアを連携させるのに適した考え方であり，やりとりされる情報はそれ自体で完結して解釈できるステートレス性，全てのリソースが一意的なアドレスを持つアドレス可能性，他の基盤的な機能を用いずに別の情報や状態を含むことで他のリソースを参照できる持続性，HTTPメソッド（“GET”や“POST”など）の統一インターフェースを提供していることなどの原則から成る．RESTの原則に則り構築されたHTTPの呼び出しインターフェースをRESTful APIと呼ぶ．本論文ではRESTful APIをミドルウェアに実装し実験を行う．
 
 \chapter{提案手法}
+\label{chap:ProposedAlgorithm}
 \section{ドキュメント指向型データベースにおける実体化について}
-ドキュメント指向型データベースの特徴として埋め込み（embed）がある．従来のRDBでは複数の表による1対多や多対多の関係を表す際に，参照先のプライマリーキーのみを保存してSELECTされる際に結合処理を行う．それに対してドキュメント指向型データベースでは参照先の実データを参照元に埋め込むことができ，これによって結合処理を省くことができる．埋め込み先が複数の場合には更新処理が増加し，従来の参照型に比べてデータアクセスの柔軟性が損なわれるというデメリットがある\cite{Sky株式会社201212}.図\ref{EmbedReference}はドキュメント指向型データベースの参照型を埋込型を表した図である．
+ドキュメント指向型データベースの特徴として埋め込み（embed）がある．従来のRDBでは複数の表による1対多や多対多の関係を表す際に，参照先のプライマリーキーのみを保存してSELECTされる際に結合処理を行う．それに対してドキュメント指向型データベースでは参照先の実データを参照元に埋め込むことができ，これによって結合処理を省くことができる．埋め込み先が複数の場合には更新処理が増加し，従来の参照型に比べてデータアクセスの柔軟性が損なわれるというデメリットがある\cite{Sky株式会社201212}.図\ref{figure:Reference}はドキュメント指向型データベースの参照型を，図\ref{figure:Embed}は図\ref{figure:Reference}のデータを埋込型で表した図である．
+また．図\ref{figure:Embed}と図\ref{figure:Reference}のドキュメントを得るためのクエリを表\ref{table:MongoReferenceEmbedFind}に示す．idが123456のドキュメントを更新するクエリを表\ref{table:MongoReferenceEmbedUpdate}に示す．なお，表\ref{table:MongoReferenceEmbedUpdate}の埋込型に関しては，埋め込まれているコレクション全てに対してクエリを実行する必要がある．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em, trim=0 5em 0 0]{src/EmbedReference.eps} %[trim=left bottom right top]
+		\includegraphics[width=30em, trim=0 5em 0 2em]{src/Reference.eps} %[trim=left bottom right top]
 	\end{center}
-	\caption{参照型と埋込型}
-	\label{EmbedReference}
+	\caption{参照型}
+	\label{figure:Reference}
 \end{figure}
-，全てのドキュメントを埋め込み型として保存すると埋め込み先のドキュメントの更新処理が増え，著しく更新時間が増加する為，データモデルとして最適とは言えない．埋め込み型のデータモデルとして保存するコレクションを最適に選択し，データモデルを最適化することがドキュメント指向型データベースを高速に使用することに繋がる．本論文ではこのコレクションの選択を自動化する．
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em, trim=0 7em 0 0em]{src/Embed.eps} %[trim=left bottom right top]
+	\end{center}
+	\caption{埋込型}
+	\label{figure:Embed}
+\end{figure}
 
-\section{実装システムについて}
-本論文ではドキュメント指向型データベースの埋込型データモデルをリレーショナルデータベースの実体化ビューと置き換えて考える．ドキュメント指向型データベースのよくアクセスされる部分や処理速度がネックとなっている部分を埋込型として別コレクションに保持することで“実体化ビュー作成”，どの部分を埋込型にするかの判断を“実体化ビュー選択”とする．図\ref{ReferenceToEmbed}は本論文での“実体化ビュー作成”を示したものである．
+\begin{table}[htb]
+  \begin{center}
+    \caption{MongoDBにおける参照型データモデルと埋込型データモデルでの検索クエリ}
+		\label{table:MongoReferenceEmbedFind}
+    \begin{tabular}{|c|l|} \hline
+			参照型 &
+			\begin{tabular}{l}
+				db.people.aggregate([\{ \$match: \{ID: 12345\}\},\\ \{ \$lookup: \{ from: "families", localField: "familyID", foreignField: "ID"\}\}]);
+			\end{tabular}\\ \hline
+			埋込型 & db.people.find(\{ID: 12345\});\\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+\begin{table}[htb]
+  \begin{center}
+    \caption{MongoDBにおける参照型データモデルと埋込型データモデルでの更新クエリ}
+		\label{table:MongoReferenceEmbedUpdate}
+    \begin{tabular}{|c|l|} \hline
+			参照型 &
+			\begin{tabular}{l}
+				db.family.update(\{ ID: 123456\},\{ \$set: \{ name: "takebayashi"\}\});
+			\end{tabular}\\ \hline
+			埋込型 & db.people.update(\{"family.ID": 12345\}, \{ \$set: \{family.\$.name: "takebayashi"\}\});\\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+
+全てのドキュメントを埋め込み型として保存すると埋め込み先のドキュメントの更新処理が増え，著しく更新時間が増加する為，データモデルとして最適とは言えない．埋め込み型のデータモデルとして保存するコレクションを最適に選択し，データモデルを最適化することがドキュメント指向型データベースを高速に使用することに繋がる．本論文ではこのコレクションの選択を自動化する．
+
+\section{提案手法の構成}
+本論文ではドキュメント指向型データベースの埋込型データモデルをリレーショナルデータベースの実体化ビューと置き換えて考える．ドキュメント指向型データベースのよくアクセスされる部分や処理速度がネックとなっている部分を埋込型として別コレクションに保持することで“実体化ビュー作成”，どの部分を埋込型にするかの判断を“実体化ビュー選択”とする．図\ref{figure:ReferenceToEmbed}は本論文での“実体化ビュー作成”を示したものである．
 \begin{figure}[htbp]
 	\begin{center}
 		\includegraphics[width=30em, trim=0 13em 0 0]{src/ReferenceToEmbed.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{参照型から埋込型への書き換え}
-	\label{ReferenceToEmbed}
+	\label{figure:ReferenceToEmbed}
 \end{figure}
 
-実装システムについて図\ref{Midleware}に示す．ユーザーからのデータアクセスから実体化ビュー作成までの流れを図\ref{Midleware}を用いて説明する．
+実装システムについて図\ref{figure:Midleware}に示す．ユーザーからのデータアクセスから実体化ビュー作成までの流れを図\ref{figure:Midleware}を用いて説明する．
 \begin{figure}[h]
 	\begin{center}
 		\includegraphics[width=30em]{src/Midleware.eps}
 	\end{center}
 	\caption{提案ミドルウェア（実体化前）}
-	\label{Midleware}
+	\label{figure:Midleware}
 \end{figure}
-図\ref{Midleware}-①まずユーザーがアプリケーションからミドルウェアに対してデータアクセスの要求する．図\ref{Midleware}-②ミドルウェアでは，頻繁にアクセスされるドキュメントを分析するために，クエリに関するログを残す．図\ref{Midleware}-③次にMongoDBに対してクエリを発行する．図\ref{Midleware}-④MongoDBから返ってきたクエリセットをアプリケーションに返却する．図\ref{Midleware}-⑤クエリログを解析し，ボトルネックとなっているところや呼び出し回数の多い条件の実体化ビューを作成する．図\ref{Midleware}-⑥実体化したドキュメントに関してログに記録する．
+図\ref{figure:Midleware}-①まずユーザーがアプリケーションからミドルウェアに対してデータアクセスの要求する．図\ref{figure:Midleware}-②ミドルウェアでは，頻繁にアクセスされるドキュメントを分析するために，クエリに関するログを残す．図\ref{figure:Midleware}-③次にMongoDBに対してクエリを発行する．図\ref{figure:Midleware}-④MongoDBから返ってきたクエリセットをアプリケーションに返却する．図\ref{figure:Midleware}-⑤クエリログを解析し，ボトルネックとなっているところや呼び出し回数の多い条件の実体化ビューを作成する．図\ref{figure:Midleware}-⑥実体化したドキュメントに関してログに記録する．
 
-実体化した後のデータアクセスの流れを図\ref{MidlewareMv}に示す．図\ref{MidlewareMv}-①’アプリケーションからデータベースにアクセスがあった場合，まずログからアクセスされたデータが実体化されているか判定する．図\ref{MidlewareMv}-②’実体化されている場合はクエリを書き換えて実体化ビューから結果を取得する．図\ref{MidlewareMv}-③’アプリケーションに結果を返す際には元のクエリに合うように適宜変換する．
+実体化した後のデータアクセスの流れを図\ref{figure:MidlewareMv}に示す．図\ref{figure:MidlewareMv}-①’アプリケーションからデータベースにアクセスがあった場合，まずログからアクセスされたデータが実体化されているか判定する．図\ref{figure:MidlewareMv}-②’実体化されている場合はクエリを書き換えて実体化ビューから結果を取得する．図\ref{figure:MidlewareMv}-③’アプリケーションに結果を返す際には元のクエリに合うように適宜変換する．
 \begin{figure}[htbp]
 	\begin{center}
 		\includegraphics[width=30em]{src/MidlewareMv.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{提案ミドルウェア（実体化後）}
-	\label{MidlewareMv}
+	\label{figure:MidlewareMv}
 \end{figure}
 
 \section{実体化アルゴリズムについて}
@@ -158,6 +273,7 @@ RESTとはRoy Fieldingが提唱した概念であり\cite{fielding2000architectu
 本論文ではクエリのログの統計から実体化後の検索処理時間と更新処理時間を比較し，各コレクションに対して逆実体化の必要性を確認する．
 
 \chapter{実験}
+\label{chap:Experiment}
 \section{Mongooseについて}
 MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境でうまく動作することを目的として設計されている．Mongooseを使用すれば，モデルを定義して操作することで，MongoDBのコレクション/ドキュメントを操作できる\cite{mongoose}．本論文ではMongooseを用いてMongoDBを操作するミドルウェアを実装する．
 
@@ -167,7 +283,7 @@ MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境�
   \begin{center}
     \caption{実験環境}
 		\label{table:experiment_env}
-    \begin{tabular}{|l|c|} \hline
+    \begin{tabular}{|c|c|} \hline
       マシン & MacBook (Retina, 12-inch, 2017) \\ \hline
       プロセッサ & 1.2 GHz Intel Core m3\\ \hline
       メモリ & 8 GB 1867 MHz LPDDR3\\ \hline
@@ -202,7 +318,7 @@ MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境�
   \begin{center}
     \caption{クエリパターン}
 		\label{table:experiment_query_pattern}
-    \begin{tabular}{|l|c|c|} \hline
+    \begin{tabular}{|c|c|c|} \hline
         & 検索回数 & 更新回数 \\ \hline
       パターン1 & 99 & 1\\ \hline
       パターン2 & 97 & 3\\ \hline
@@ -213,8 +329,10 @@ MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境�
 \end{table}
 
 \chapter{結果・考察}
+\label{chap:Result}
 
 \chapter{まとめ}
+\label{chap:Conclusion}
 
 \chapter*{謝辞}
 \addcontentsline{toc}{chapter}{\numberline{}謝辞}
