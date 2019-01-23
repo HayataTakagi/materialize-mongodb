@@ -9,7 +9,6 @@ const seedObjects = {
       _id: Number,
       name: String,
       age: Number,
-      stories: [{ type: Number, ref: 'Story' }],
       created_at: {type: Date, default: Date.now},
       updated_at: {type: Date, default: Date.now},
     }, "storySchema": {
@@ -28,12 +27,6 @@ const seedObjects = {
         comment: String
       },
       story: { type: Number, ref: 'Story' },
-      created_at: {type: Date, default: Date.now},
-      updated_at: {type: Date, default: Date.now},
-    }, "weatherSchema": {
-      _id: Number,
-      weather: String,
-      date: Date,
       created_at: {type: Date, default: Date.now},
       updated_at: {type: Date, default: Date.now},
     }, "publisherSchema": {
@@ -54,7 +47,6 @@ const mvSeedObjects = {
       _id: Number,
       name: String,
       age: Number,
-      stories: [{ type: Number, ref: 'Story' }],
       created_at: {type: Date, default: Date.now},
       updated_at: {type: Date, default: Date.now},
     }, "storySchema": {
@@ -73,12 +65,6 @@ const mvSeedObjects = {
         comment: String
       },
       story: { type: Number, ref: 'Story' },
-      created_at: {type: Date, default: Date.now},
-      updated_at: {type: Date, default: Date.now},
-    }, "weatherSchema": {
-      _id: Number,
-      weather: String,
-      date: Date,
       created_at: {type: Date, default: Date.now},
       updated_at: {type: Date, default: Date.now},
     }, "publisherSchema": {
