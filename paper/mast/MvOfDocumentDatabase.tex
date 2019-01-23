@@ -29,13 +29,13 @@
 %% 【注意】タイトルの最後に\\ を入れるとエラーになります
 \title{NoSQL型データベースシステムでの実体化ビュー選択に関する研究}
 %% 著者
-\author{高木 颯汰}
+\author{髙木 颯汰}
 %% 指導教員
-\advisor{古瀬 一隆　陳 漢雄}
+\advisor{古瀬 一隆 陳 漢雄}
 
 %% 年月 (提出年月)
 %% 年月は必要に応じて書き替えてください．
-\majorfield{　} \yearandmonth{2019年 1月}
+\majorfield{ } \yearandmonth{2019年 1月}
 
 
 
@@ -99,6 +99,12 @@ NoSQLデータベースはキー・バリュー型，カラム指向型，ドキ
 \section{MongoDB}
 MongoDBとは，JSONやXMLなどの形式で記述されたドキュメント指向型のデータを扱うNoSQLデータベースの代表的なものの一つである．RDBとは違い，スキーマの定義を必要としない\cite{太田201204}\cite{mongodb}．また，JSON形式のデータを扱うため，Webシステムなどに利用しやすい．
 MongoDBにおいては，RDBのテーブルにあたるものとしてコレクション，RDBの行にあたるものとしてドキュメント，RDBの列にあたるものとしてフィールドというデータ構想が使われる．
+
+\section{Restful API}
+RESTとはRoy Fieldingが提唱した概念であり\cite{fielding2000architectural}，“REpresentational State Transfer”の略である．分散システムにおける複数のソフトウェアを連携させるのに適した考え方であり，やりとりされる情報はそれ自体で完結して解釈できるステートレス性，全てのリソースが一意的なアドレスを持つアドレス可能性，他の基盤的な機能を用いずに別の情報や状態を含むことで他のリソースを参照できる持続性，HTTPメソッド（“GET”や“POST”など）の統一インターフェースを提供していることなどの原則から成る．RESTの原則に則り構築されたHTTPの呼び出しインターフェースをRESTful APIと呼ぶ．本論文ではRESTful APIをミドルウェアに実装し実験を行う．
+
+\chapter{提案手法}
+\section{ドキュメント指向型データベースにおける実体化について}
 ドキュメント指向型データベースの特徴として埋め込み（embed）がある．従来のRDBでは複数の表による1対多や多対多の関係を表す際に，参照先のプライマリーキーのみを保存してSELECTされる際に結合処理を行う．それに対してドキュメント指向型データベースでは参照先の実データを参照元に埋め込むことができ，これによって結合処理を省くことができる．埋め込み先が複数の場合には更新処理が増加し，従来の参照型に比べてデータアクセスの柔軟性が損なわれるというデメリットがある\cite{Sky株式会社201212}.図\ref{EmbedReference}はドキュメント指向型データベースの参照型を埋込型を表した図である．
 \begin{figure}[htbp]
 	\begin{center}
@@ -107,11 +113,8 @@ MongoDBにおいては，RDBのテーブルにあたるものとしてコレク�
 	\caption{参照型と埋込型}
 	\label{EmbedReference}
 \end{figure}
+，全てのドキュメントを埋め込み型として保存すると埋め込み先のドキュメントの更新処理が増え，著しく更新時間が増加する為，データモデルとして最適とは言えない．埋め込み型のデータモデルとして保存するコレクションを最適に選択し，データモデルを最適化することがドキュメント指向型データベースを高速に使用することに繋がる．本論文ではこのコレクションの選択を自動化する．
 
-\section{Restful API}
-RESTとはRoy Fieldingが提唱した概念であり\cite{fielding2000architectural}，“REpresentational State Transfer”の略である．分散システムにおける複数のソフトウェアを連携させるのに適した考え方であり，やりとりされる情報はそれ自体で完結して解釈できるステートレス性，全てのリソースが一意的なアドレスを持つアドレス可能性，他の基盤的な機能を用いずに別の情報や状態を含むことで他のリソースを参照できる持続性，HTTPメソッド（“GET”や“POST”など）の統一インターフェースを提供していることなどの原則から成る．RESTの原則に則り構築されたHTTPの呼び出しインターフェースをRESTful APIと呼ぶ．本論文ではRESTful APIをミドルウェアに実装し実験を行う．
-
-\chapter{提案手法}
 \section{実装システムについて}
 本論文ではドキュメント指向型データベースの埋込型データモデルをリレーショナルデータベースの実体化ビューと置き換えて考える．ドキュメント指向型データベースのよくアクセスされる部分や処理速度がネックとなっている部分を埋込型として別コレクションに保持することで“実体化ビュー作成”，どの部分を埋込型にするかの判断を“実体化ビュー選択”とする．図\ref{ReferenceToEmbed}は本論文での“実体化ビュー作成”を示したものである．
 \begin{figure}[htbp]
@@ -141,14 +144,77 @@ RESTとはRoy Fieldingが提唱した概念であり\cite{fielding2000architectu
 	\label{MidlewareMv}
 \end{figure}
 
+\section{実体化アルゴリズムについて}
+クエリログから実体化するコレクションを決定する条件を適切に設定することで，実体化ビュー選択を自動化することができる．この実体化条件については以下の条件が考えられる．
+\begin{enumerate}
+  \item クエリログの統計
+  \item ドキュメント内の参照数
+\end{enumerate}
+1の条件は実際のクエリの検索回数・更新回数やその処理時間を元に実体化するコレクションを選定する．2の条件ではドキュメント内の他コレクションへの参照数を元に実体化後の更新処理の増加を予想し，実体化するコレクションを選定する．本論文では更新処理が用意であり，クエリに柔軟に対応できるクエリログの統計を元に実体化する条件を作成する．
+
+\section{逆実体化アルゴリズムについて}
+クエリのログを元に実体化した場合，クエリの傾向が変わることで実体化していない状態の方が望ましくなる可能性や，コレクションの特性によっては実体化によるメリットがデメリットより少ない可能性がある．そのような事を防ぐために，定期的に実体化したコレクションに対してもメンテナンスを行い，場合によっては実体化したコレクションをオリジナルのデータモデルに戻すことが必要である．本論文では実体化したコレクションのデータモデルを元に戻す事を逆実体化と定義する．この逆実体化に対しても実体化同様，適切な逆実体化条件を設定する必要がある．
+
+本論文ではクエリのログの統計から実体化後の検索処理時間と更新処理時間を比較し，各コレクションに対して逆実体化の必要性を確認する．
 
 \chapter{実験}
 \section{Mongooseについて}
 MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境でうまく動作することを目的として設計されている．Mongooseを使用すれば，モデルを定義して操作することで，MongoDBのコレクション/ドキュメントを操作できる\cite{mongoose}．本論文ではMongooseを用いてMongoDBを操作するミドルウェアを実装する．
 
+\section{実験環境}
+実験環境に関する情報を表\ref{table:experiment_env}に示す．
+\begin{table}[htb]
+  \begin{center}
+    \caption{実験環境}
+		\label{table:experiment_env}
+    \begin{tabular}{|l|c|} \hline
+      マシン & MacBook (Retina, 12-inch, 2017) \\ \hline
+      プロセッサ & 1.2 GHz Intel Core m3\\ \hline
+      メモリ & 8 GB 1867 MHz LPDDR3\\ \hline
+      データベースシステム & Mongodb version 3.1.10\\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+
+\section{実験方法}
+本論文の実験で用いたコレクションはpersonコレクション，storyコレクション，commentコレクション，publisherコレクションである．コレクションの構造，コレクション同士の参照に関しては図\ref{ExperimentCollection}，図\ref{ExperimentCollection2}に示す．storyコレクションには筆者として1つのpersonドキュメントのidを格納する．このstoryドキュメントが検索された際には筆者のidをperosnコレクションから検索し，結合して結果を返す．同じようにファンとしてpersonドキュメントのidを配列で格納することで複数のpersonドキュメントをstoryドキュメントに埋め込む．実際の実験データではファンとして100のpersonドキュメントのidを埋め込む．その際，100回結合処理を実行することになる．出版社としてpublisherドキュメントのidも格納する．
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em, trim=10em 2em 10em 2em]{src/ExperimentCollection.eps} %[trim=left bottom right top]
+	\end{center}
+	\caption{storyコレクションから各コレクションへの参照}
+	\label{ExperimentCollection}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em, trim=10em 2em 10em 2em]{src/ExperimentCollection2.eps} %[trim=left bottom right top]
+	\end{center}
+	\caption{commentコレクションから各コレクションへの参照}
+	\label{ExperimentCollection2}
+\end{figure}
+実験において使用するデータは全て参照型のデータモデルで挿入する．実体化していない状態で検索された場合には結合処理を行い結果を返す．実験に用いるドキュメントはPythonのライブラリであるfaker\cite{faker}を用いて作成した．
 
 
+実験では全てのコレクションが従来の参照型のデータモデルを用いたシステムと実体化条件を用いずに全てのコレクションを実体化したシステム，実体化条件を用いて適宜コレクションを実体化するシステムの3つのデータベースシステムを比較する．その際，実体化を用いたシステムでは検索や更新を提案ミドルウェアを用いて処理する．
 
+この3つのシステムを比較する際，検索と更新の比率を変えた4つのクエリパターンを用いて行う．このクエリパターンを表に示す．
+\begin{table}[htb]
+  \begin{center}
+    \caption{クエリパターン}
+		\label{table:experiment_query_pattern}
+    \begin{tabular}{|l|c|c|} \hline
+        & 検索回数 & 更新回数 \\ \hline
+      パターン1 & 99 & 1\\ \hline
+      パターン2 & 97 & 3\\ \hline
+			パターン3 & 95 & 5\\ \hline
+      パターン4 & 90 & 10\\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+
+\chapter{結果・考察}
+
+\chapter{まとめ}
 
 \chapter*{謝辞}
 \addcontentsline{toc}{chapter}{\numberline{}謝辞}
