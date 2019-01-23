@@ -76,7 +76,7 @@ Object.keys(schemaList).forEach(function(value) {
           collectionName = self.mongooseCollection.collectionName,
           populate = Object.keys(self._mongooseOptions.populate);
           // MVログが存在するかでMV化されているか判定する
-          logModelList['Mvlog'].countDocuments({original_model: modelName, original_coll: collectionName, populate: populate}, function(err, count) {
+          logModelList['Mvlog'].countDocuments({original_model: modelName, original_coll: collectionName, populate: populate, is_deleted: false}, function(err, count) {
             if (err) return console.log(err);
             if (count === 1) {
               showLog('Exist MV.', lib.lowLog);
@@ -159,6 +159,9 @@ function queryLogFindOne(elapsedTime, obj) {
   if (global.testId) {
     saveObject.test_id = global.testId;
   }
+  if (global.processId) {
+    saveObject.process_id = global.processId;
+  }
   // クエリが書き換えられたかどうか
   saveObject.is_rewrited = obj._isRewritedQuery ? 1 : 0;
   // ログをDBに書き込み
@@ -168,7 +171,7 @@ function queryLogFindOne(elapsedTime, obj) {
 }
 
 // クエリログの保存(update)
-let queryLogUpdate = function queryLogUpdate(processId, modelName, mvModelName=null) {
+let queryLogUpdate = function queryLogUpdate(processId, modelName, mvModelName=null, isMv) {
   showLog('Writing Query Log', lib.wasteLog);
   let elapsedTime = performance.now() - startTimeList[processId];
   let saveObject = {
@@ -176,6 +179,7 @@ let queryLogUpdate = function queryLogUpdate(processId, modelName, mvModelName=n
     ori_model_name: modelName,
     model_name: mvModelName ? mvModelName : modelName,
     method: "update",
+    is_rewrited: isMv ? true : false,
     process_id: processId,
   };
 

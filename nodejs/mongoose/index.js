@@ -75,6 +75,8 @@ app.post("/findOne", function(req, res, next){
   let requiredVariables = ["modelName", "query", "populate"];
   initPostMethod("findOne", requiredVariables, req.body, (err) => {
     if (err) return res.json(err);
+    // 時間測定用のprocessIdを設定(グローバル)
+    global.processId = createProcessId(req.body.processNum);
     find.findOneDocument(req.body, (err, docs) => {
       if (err) {
           // console.log(err);
@@ -91,7 +93,7 @@ app.post("/update", function(req, res, next){
   let requiredVariables = ["modelName", "query", "updateDocument"];
   initPostMethod("update", requiredVariables, req.body, (err) => {
     if (err) return res.json(err);
-    // 時間測定用のprocessIdを設定
+    // 時間測定用のprocessIdを設定(var)
     req.body.processId = createProcessId(req.body.processNum);
     update.updateDocuments(req.body, function(err, docs) {
       if (err) {

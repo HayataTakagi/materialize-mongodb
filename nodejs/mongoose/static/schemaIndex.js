@@ -114,6 +114,7 @@ const logSeedObjects = {
     original_coll: String,
     populate: [ String ],
     populate_model: [ String ],
+    is_deleted: Boolean,
     created_at: {type: Date, default: Date.now},
     updated_at: {type: Date, default: Date.now},
   },

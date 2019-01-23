@@ -61,7 +61,7 @@ let aggregateTestUpdate = function aggregateTestUpdate(testId, methodName, callb
       count: { $sum: 1},
     }},
     { $group: {
-      _id: {method: "method"},
+      _id: {method: "$_id.method"},
       total_time: { $sum: "$max_time"},
       average_time: { $avg: "$max_time"},
       query_count: { $sum: 1},

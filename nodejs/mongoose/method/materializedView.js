@@ -45,8 +45,8 @@ let createMvDocument = function createMvDocument(modelName, populate, processId,
         mvDocuments[value],  // 保存するobject
         {upsert: true, setDefaultsOnInsert: true},
         (err, res) => {
-          if (processId) {
-            modelBilder.queryLogUpdate(processId, parentModelName, `Mv${modelName}`);
+          if (processId != null) {
+            modelBilder.queryLogUpdate(processId, parentModelName, `Mv${modelName}`, true);
           }
           showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}, now:${performance.now()}`, logLev);
         });
@@ -67,64 +67,183 @@ let createMvDocument = function createMvDocument(modelName, populate, processId,
 let createMvDocumentAll = function createMvDocumentAll(callback) {
   showLog('Starting createMvDocumentAll', lib.topLog);
   Object.keys(populateListForModel).forEach(value => {
-    createMvDocument(value, populateListForModel[value], value, null);
+    createMvDocument(value, populateListForModel[value], null, value);
   });
   callback(null, {"message": "ok"});
 };
 
+// MVを論理削除する
+function reverceCreateMvDocument(modelName) {
+  let saveObject = {"is_deleted": true, "updated_at": new Date()};
+  logModelList['Mvlog'].updateOne({original_model: modelName}, saveObject, (err, raw) => {
+    if (err) return console.log(err);
+    showLog(`reverceCreateMvDocument | modelName: ${modelName} response: ${JSON.stringify(raw)}`, lib.normalLog);
+  });
+}
+
 // MV作成判断
 let judgeCreateMv = function judgeCreateMv(callback) {
+  let analizeMethodList = ["update", "findOne"];  // 解析に用いるMongoのmethod
   showLog('Starting judgeCreateMv', lib.topLog);
   // ユーザーログの読み込み
   logModelList['Userlog'].aggregate([
     { $match: {
-      populate: { $exists: true, $ne: [] },
       date: {
         $lt: new Date(),
         $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)},
-        is_rewrited: false,
-        method: "findOne"
       }},
       { $group: {
-        _id: {model_name: "$model_name", method: "$method", populate: "$populate"},
-        total_time: { $sum: "$elapsed_time"},
-        average_time: { $avg: "$elapsed_time"},
-        count: { $sum: 1}
+        _id: {ori_model_name: "$ori_model_name", method: "$method", is_rewrited: "$is_rewrited", process_id: "$process_id"},
+        elapsed_time_max: { $max: "$elapsed_time"},
+        count_query: { $sum: 1}
       }},
-      { $sort: { "_id.model_name": 1, "average_time": -1, "count": -1}}
+      { $group: {
+        _id: { ori_model_name: "$_id.ori_model_name", method: "$_id.method", is_rewrited: "$_id.is_rewrited"},
+        total_time: { $sum: "$elapsed_time_max"},
+        average_time: { $avg: "$elapsed_time_max"},
+        count_post: { $sum: 1},
+        count_query: { $sum: "$count_query"},
+      }},
+      { $sort: { "_id.ori_model_name": 1, "_id.method" :1}}
     ]).
     exec((err, docs) => {
-      // 処理平均時間が超えているクエリに関してコレクション毎に整理する
-      var userLogObject = {};
-      Object.keys(docs).forEach((value) => {
-        if (docs[value].average_time > env.MV_CREATE_AVG) {
-          // 処理平均時間が超えているクエリを選択
-          if (userLogObject[docs[value]._id.model_name] == null) {
-            // コレクション毎にarrayを作成
-            userLogObject[docs[value]._id.model_name] = [];
-          }
-          // コレクションarrayにpush
-          userLogObject[docs[value]._id.model_name].push(docs[value]);
-        }
-      });
-      showLog('Finish Cluclation About userLog' , lib.topLog);
-      console.log(userLogObject);
-      // 各コレクションの最重要項目のみMV化
-      Object.keys(userLogObject).forEach((value) => {
-        if (value != "undefined") {
-          // 上位からpopulate先が存在するものがあるまでループを実行
-          userLogObject[value].some((logObject) => {
-            let topUserLog = logObject._id;
-            // populateの妥当性をチェック
-            if (checkPopulateAdequacy(topUserLog.model_name, topUserLog.populate)) {
-              showLog(`Create MV (modelName: ${topUserLog.model_name}, populate: [${topUserLog.populate.join(',')}])`, lib.topLog);
-              createMvDocument(topUserLog.model_name, topUserLog.populate);
-              return true;  // ループ文(some)を抜ける
+      // model毎にmv化チェックをする
+      Object.keys(populateListForModel).forEach((model) => {
+        if (populateListForModel[model].length === 0) {
+          // populate先がないのでmv判定不要
+          showLog(`${model} doesn't have populate.`, lib.normalLog);
+        } else {
+          logModelList['Mvlog'].find({original_model: model}, (err, mvLogDoc)=> {
+            if (mvLogDoc.length === 0) {
+              // mvが存在せず,過去にも作られたことがない
+              // 初期MV化条件を検討
+              let logList = [];
+              showLog(`${model} doesn't have MV ALSO hasn't created MV.`, lib.normalLog);
+              // このmodelに関するlogのみ抽出
+              let logForFirstCreateMv = docs.filter((logObject) => {
+                return (logObject._id.ori_model_name === model && logObject._id.is_rewrited === false);
+              });
+              // method毎に整理する
+              Object.keys(logForFirstCreateMv).forEach((value) => {
+                if (analizeMethodList.includes(logForFirstCreateMv[value]["_id"]["method"])) {
+                  logList[logForFirstCreateMv[value]["_id"]["method"]] = logForFirstCreateMv[value];
+                }
+              });
+              if (Object.keys(logList).length === 0) {
+                // 解析するlogがないので終了
+                showLog(`${model} have NO userLog to analize.`, lib.normalLog);
+              } else if (Object.keys(logList).length < analizeMethodList.length) {
+                // findOneのみの場合はMV化し,updateのみの場合はMV化しない
+                if (Object.keys(logList)[0] === "findOne") {
+                  showLog(`${model} should be created MV BECAUSE has only findOne Log.`, lib.normalLog);
+                  // MV作成
+                  createMvDocument(model, populateListForModel[model], null, model);
+                } else {
+                  showLog(`${model} has only update Log.`, lib.normalLog);
+                }
+              } else if (Object.keys(logList).length === analizeMethodList.length) {
+                // findOneとupdateのクエリ数の比を比べる
+                if (logList["findOne"]["count_post"] > logList["update"]["count_post"] * env.MV_FIND_UPDATE_PERCENTAGE) {
+                  showLog(`${model} should be created MV BECAUSE find/update is OVER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
+                  // MV作成
+                  createMvDocument(model, populateListForModel[model], null, model);
+                } else {
+                  showLog(`${model} should NOT be created MV BECAUSE find/update is LOWER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
+                }
+              } else {
+                showLog(`${model} FAILE analize mvLog!`, lib.topLog);
+              }
+              // end of "if (mvLogDoc.length === 0)"
+
+            } else if (mvLogDoc[0]["is_deleted"]) {
+              // mvが存在しないが,過去には作られたことがある
+              // TODO: 二度目以降のMV化条件の実装
+              showLog(`${model} doesn't have MV BUT has created MV.`, lib.normalLog);
+
+              // ===== 上記のコピー
+              let logList = [];
+              // このmodelに関するlogのみ抽出
+              let logForFirstCreateMv = docs.filter((logObject) => {
+                return (logObject._id.ori_model_name === model && logObject._id.is_rewrited === false);
+              });
+              // method毎に整理する
+              Object.keys(logForFirstCreateMv).forEach((value) => {
+                if (analizeMethodList.includes(logForFirstCreateMv[value]["_id"]["method"])) {
+                  logList[logForFirstCreateMv[value]["_id"]["method"]] = logForFirstCreateMv[value];
+                }
+              });
+              if (Object.keys(logList).length === 0) {
+                // 解析するlogがないので終了
+                showLog(`${model} have NO userLog to analize.`, lib.normalLog);
+              } else if (Object.keys(logList).length < analizeMethodList.length) {
+                // findOneのみの場合はMV化し,updateのみの場合はMV化しない
+                if (Object.keys(logList)[0] === "findOne") {
+                  showLog(`${model} should be created MV BECAUSE has only findOne Log.`, lib.normalLog);
+                  // MV作成
+                  createMvDocument(model, populateListForModel[model], null, model);
+                } else {
+                  showLog(`${model} has only update Log.`, lib.normalLog);
+                }
+              } else if (Object.keys(logList).length === analizeMethodList.length) {
+                // findOneとupdateのクエリ数の比を比べる
+                if (logList["findOne"]["count_post"] > logList["update"]["count_post"] * env.MV_FIND_UPDATE_PERCENTAGE) {
+                  showLog(`${model} should be created MV BECAUSE find/update is OVER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
+                  // MV作成
+                  createMvDocument(model, populateListForModel[model], null, model);
+                } else {
+                  showLog(`${model} should NOT be created MV BECAUSE find/update is LOWER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
+                }
+              } else {
+                showLog(`${model} FAILE analize mvLog!`, lib.topLog);
+              }
+              // ===== コピー終わり
+
+            } else if (!mvLogDoc[0]["is_deleted"]) {
+              // mvが存在する
+              // 逆MV化条件の検討
+              showLog(`${model} has MV.`, lib.normalLog);
+              let logList = [];
+              // このmodelに関するlogのみ抽出
+              let logForReverceCreateMv = docs.filter((logObject) => {
+                return (logObject._id.ori_model_name === model && logObject._id.is_rewrited === true);
+              });
+              // method毎に整理する
+              Object.keys(logForReverceCreateMv).forEach((value) => {
+                if (analizeMethodList.includes(logForReverceCreateMv[value]["_id"]["method"])) {
+                  logList[logForReverceCreateMv[value]["_id"]["method"]] = logForReverceCreateMv[value];
+                }
+              });
+              if (Object.keys(logList).length === 0) {
+                // 解析するlogがないので終了
+                showLog(`${model} have NO userLog to analize.`, lib.normalLog);
+              } else if (Object.keys(logList).length < analizeMethodList.length) {
+                // findOneのみの場合は何もせず,updateのみの場合は逆MV化
+                if (Object.keys(logList)[0] === "findOne") {
+                  showLog(`${model} should keep MV BECAUSE has only findOne Log.`, lib.normalLog);
+                } else {
+                  showLog(`${model} should REVERCE MV BECAUSE has only update Log.`, lib.normalLog);
+                  // 逆MV化
+                  reverceCreateMvDocument(model);
+                }
+              } else if (Object.keys(logList).length === analizeMethodList.length) {
+                // 累計クエリ時間を比較する
+                if (logList["findOne"]["total_time"] < logList["update"]["total_time"]) {
+                  showLog(`${model} should REVERCE MV BECAUSE total_time is find < update.`, lib.normalLog);
+                  // 逆MV化
+                  reverceCreateMvDocument(model);
+                } else {
+                  showLog(`${model} should keep MV BECAUSE total_time is find > update.`, lib.normalLog);
+                }
+              }
+              console.log(logList);
+            } else {
+              showLog(`${model} FAILE analize mvLog!`, lib.topLog);
             }
+
           });
         }
       });
-      callback(null, userLogObject);
+      callback(null, docs);
     }
   );
 };
@@ -143,7 +262,7 @@ function checkPopulateAdequacy(modelName, populate) {
 }
 
 // MVログの記録
-function createMvLog(modelName, collectionName, populate) {
+function createMvLog(modelName, collectionName, populate, isDelete=false) {
   // populate先のモデル名を取得する
   var populateModel = [];
   Object.keys(populate).forEach((value) => {
@@ -154,6 +273,7 @@ function createMvLog(modelName, collectionName, populate) {
     original_coll: collectionName,
     populate: populate,
     populate_model: populateModel,
+    is_deleted: isDelete,
     updated_at: new Date(),
   };
   logModelList['Mvlog'].bulkWrite([

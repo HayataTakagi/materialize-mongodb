@@ -28,30 +28,33 @@ let updateDocuments = function updateDocuments(body ,callback) {
       console.log(err);
       callback(err, null);
     }
-    // オリジナルコレクションの更新
-    Object.keys(docs).forEach((value) => {
-      // updated_atを更新
-      if (!body.updateDocument.hasOwnProperty('updated_at')) {
-        body.updateDocument.updated_at = new Date();
-      }
-      // 更新処理
-      Object.assign(docs[value], body.updateDocument);
-      docs[value].save((err, doc) => {
-        if (err) {
-          console.log(err);
-          callback(err, null);
+    // オリジナル自体のMVが存在するか
+    logModelList['Mvlog'].countDocuments({original_model: body.modelName, is_deleted: false}, (err, mvCount)=> {
+      // オリジナルコレクションの更新
+      Object.keys(docs).forEach((value) => {
+        // updated_atを更新
+        if (!body.updateDocument.hasOwnProperty('updated_at')) {
+          body.updateDocument.updated_at = new Date();
         }
-        showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, lib.normalLog);
-        modelBilder.queryLogUpdate(processId, body.modelName);  // ログ書き込み
+        // 更新処理
+        Object.assign(docs[value], body.updateDocument);
+        docs[value].save((err, doc) => {
+          if (err) {
+            console.log(err);
+            callback(err, null);
+          }
+          showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, lib.normalLog);
+          modelBilder.queryLogUpdate(processId, body.modelName, null, mvCount && env.IS_USE_MV);  // ログ書き込み
+        });
       });
+      if (env.IS_USE_MV != 1) {
+        showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", lib.lowLog);
+      } else {
+        // オリジナルに関わるMVを更新
+        updateMvDocuments(docs, body.modelName, body.query, body.updateDocument, processId);
+      }
+      callback(null, docs);
     });
-    if (env.IS_USE_MV != 1) {
-      showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", lib.lowLog);
-    } else {
-      // オリジナルに関わるMVを更新
-      updateMvDocuments(docs, body.modelName, body.query, body.updateDocument, processId);
-    }
-    callback(null, docs);
   });
 };
 
@@ -63,7 +66,7 @@ function updateMvDocuments(originalDocs, modelName, query, updateDocument, proce
   var doc_ids = Object.keys(originalDocs).map((element) => {
     return originalDocs[element]._id;
   });
-  logModelList['Mvlog'].find({original_model: modelName}, (err, docs) => {
+  logModelList['Mvlog'].find({original_model: modelName, is_deleted: false}, (err, docs) => {
     if (err) {
       console.log(err);
       showLog('End updateDocuments' , lib.lowLog);
@@ -80,7 +83,7 @@ function updateMvDocuments(originalDocs, modelName, query, updateDocument, proce
 
   // MV更新処理(children)
   showLog("(CHILDREN-POPULATE)Start updating MvDocuments" , lib.normalLog);
-  logModelList['Mvlog'].find({populate_model: {$elemMatch:{$eq: modelName}}}, (err, docs) => {
+  logModelList['Mvlog'].find({populate_model: {$elemMatch:{$eq: modelName}}, is_deleted: false}, (err, docs) => {
     if (err) {
       console.log(err);
       showLog('(CHILDREN-POPULATE)End updateDocuments BECAUSE Error' , lib.topLog);
