@@ -6,6 +6,7 @@
 \usepackage{epsfig} % for \psfig{file=sample.eps,width=3cm}
 %\usepackage{epsf} % for \epsfile{file=sample.eps,scale=0.6}
 %\usepackage{epsbox} % for \epsfile{file=sample.eps,scale=0.6}
+\usepackage{mediabb} % for pdf
 
 \usepackage{times} % use Times Font instead of Computer Modern
 % \usepackage{listings} % for soursecode
@@ -82,7 +83,7 @@
 
 一方でドキュメント指向データベースの特徴とも言える階層的なデータモデルが更新処理速度の低下やデータ参照の柔軟性を低下を招くことがある．これを防ぐためにはドキュメントに階層的に埋め込むフィールドを適切に選択する必要がある．本論文ではこの選択の自動化し，ドキュメント指向データベースのデータモデルのチューニングを行い，データアクセスを高速化する．
 
-本論文の構成は以下の通りである．まず，第\ref{chap:LiteratureReview}章において関連研究について紹介する．次に，第\ref{chap:ProposedAlgorithm}章において本研究の提案手法について説明をし，第\ref{chap:Experiment}章にて提案手法に関する実験を行い，提案手法の有効性を確める．第\ref{chap:Result}章において実験の結果と考察を述べ，最後に第\ref{chap:Conclusion}章において本論文のまとめと今後の課題を示す．
+本論文の構成は以下の通りである．まず，第\ref{chap:LiteratureReview}章において関連研究について紹介する．次に，第\ref{chap:ProposedAlgorithm}章において本研究の提案手法について説明をし，第\ref{chap:Experiment}章にて提案手法に関する実験を行い，提案手法の有用性を確める．第\ref{chap:Result}章において実験の結果と考察を述べ，最後に第\ref{chap:Conclusion}章において本論文のまとめと今後の課題を示す．
 
 \chapter{関連技術}
 \label{chap:LiteratureReview}
@@ -105,14 +106,15 @@
 	\caption{多対多の結合}
 	\label{figure:MvDescription2}
 \end{figure}
+
 Materialized Viewを用いた際のメリットとして，結合処理や集計処理が不要になり高速化することに加え，問い合わせに用いるSQL文が簡素化することが挙げられる．表\ref{table:mv_sql}は図\ref{figure:MvDescription2}の生徒テーブルをstudent，授業テーブルをclass，履修中間テーブルをcourse\_selection，生徒の履修結合結果を得るために作成したMaterialized Viewをmv\_course\_selectionとした際に，idが00001の生徒が履修している授業を取得するSQL文をMaterialized Viewを使用する場合としない場合を比較したものである．
 \begin{table}[htb]
   \begin{center}
     \caption{生徒テーブルと授業テーブルを結合するSQL}
 		\label{table:mv_sql}
     \begin{tabular}{|l|l|} \hline
-			\begin{tabular}{l}
-				Materialized Viewを\\使用しない
+			\begin{tabular}{c}
+				Materialized View\\不使用
 			\end{tabular} &
 			\begin{tabular}{l}
 				SELECT student.id AS student\_id,
@@ -124,8 +126,8 @@ Materialized Viewを用いた際のメリットとして，結合処理や集計
 				WHERE course\_selection.student\_id = 00001 AND\\ course\_selection.student\_id = student.id AND\\ course\_selection.class\_id = class.id;\\
 			\end{tabular}\\
 			 \hline
-			 \begin{tabular}{l}
- 				Materialized Viewを\\使用する
+			 \begin{tabular}{c}
+ 				Materialized View\\使用
  			\end{tabular} &
 			\begin{tabular}{l}
 				SELECT student\_id, class\_id, student\_name, class\_name, teacher\\
@@ -185,7 +187,7 @@ RESTとはRoy Fieldingが提唱した概念であり\cite{fielding2000architectu
 \label{chap:ProposedAlgorithm}
 \section{ドキュメント指向型データベースにおける実体化について}
 ドキュメント指向型データベースの特徴として埋め込み（embed）がある．従来のRDBでは複数の表による1対多や多対多の関係を表す際に，参照先のプライマリーキーのみを保存してSELECTされる際に結合処理を行う．それに対してドキュメント指向型データベースでは参照先の実データを参照元に埋め込むことができ，これによって結合処理を省くことができる．埋め込み先が複数の場合には更新処理が増加し，従来の参照型に比べてデータアクセスの柔軟性が損なわれるというデメリットがある\cite{Sky株式会社201212}.図\ref{figure:Reference}はドキュメント指向型データベースの参照型を，図\ref{figure:Embed}は図\ref{figure:Reference}のデータを埋込型で表した図である．
-また．図\ref{figure:Embed}と図\ref{figure:Reference}のドキュメントを得るためのクエリを表\ref{table:MongoReferenceEmbedFind}に示す．idが123456のドキュメントを更新するクエリを表\ref{table:MongoReferenceEmbedUpdate}に示す．なお，表\ref{table:MongoReferenceEmbedUpdate}の埋込型に関しては，埋め込まれているコレクション全てに対してクエリを実行する必要がある．
+また．図\ref{figure:Reference}と図\ref{figure:Embed}のドキュメントを得るためのクエリを表\ref{table:MongoReferenceEmbedFind}に示す．idが123456のドキュメントを更新するクエリを表\ref{table:MongoReferenceEmbedUpdate}に示す．なお，表\ref{table:MongoReferenceEmbedUpdate}の埋込型に関しては，埋め込まれているコレクション全てに対してクエリを実行する必要がある．
 \begin{figure}[htbp]
 	\begin{center}
 		\includegraphics[width=30em, trim=0 5em 0 2em]{src/Reference.eps} %[trim=left bottom right top]
@@ -210,7 +212,11 @@ RESTとはRoy Fieldingが提唱した概念であり\cite{fielding2000architectu
 			\begin{tabular}{l}
 				db.people.aggregate([\{ \$match: \{ID: 12345\}\},\\ \{ \$lookup: \{ from: "families", localField: "familyID", foreignField: "ID"\}\}]);
 			\end{tabular}\\ \hline
-			埋込型 & db.people.find(\{ID: 12345\});\\ \hline
+			埋込型 &
+			\begin{tabular}{l}
+				db.people.find(\{ID: 12345\});
+			\end{tabular}
+			  \\ \hline
     \end{tabular}
   \end{center}
 \end{table}
@@ -223,12 +229,16 @@ RESTとはRoy Fieldingが提唱した概念であり\cite{fielding2000architectu
 			\begin{tabular}{l}
 				db.family.update(\{ ID: 123456\},\{ \$set: \{ name: "takebayashi"\}\});
 			\end{tabular}\\ \hline
-			埋込型 & db.people.update(\{"family.ID": 12345\}, \{ \$set: \{family.\$.name: "takebayashi"\}\});\\ \hline
+			埋込型 &
+			\begin{tabular}{l}
+				db.people.update(\{"family.ID": 12345\}, \{ \$set: \{family.\$.name: "takebayashi"\}\});
+			\end{tabular}
+			  \\ \hline
     \end{tabular}
   \end{center}
 \end{table}
 
-全てのドキュメントを埋め込み型として保存すると埋め込み先のドキュメントの更新処理が増え，著しく更新時間が増加する為，データモデルとして最適とは言えない．埋め込み型のデータモデルとして保存するコレクションを最適に選択し，データモデルを最適化することがドキュメント指向型データベースを高速に使用することに繋がる．本論文ではこのコレクションの選択を自動化する．
+全てのドキュメントを埋め込み型として保存すると埋め込み先のドキュメントの更新処理が増え，著しく更新時間が増加する為，データモデルとして最適とは言えない．埋め込み型のデータモデルとして保存するコレクションを最適に選択し，データモデルを最適化することがドキュメント指向型データベースを高速に使用することに繋がる．本論文ではこの実体化するコレクションの選択を自動化する．
 
 \section{提案手法の構成}
 本論文ではドキュメント指向型データベースの埋込型データモデルをリレーショナルデータベースの実体化ビューと置き換えて考える．ドキュメント指向型データベースのよくアクセスされる部分や処理速度がネックとなっている部分を埋込型として別コレクションに保持することで“実体化ビュー作成”，どの部分を埋込型にするかの判断を“実体化ビュー選択”とする．図\ref{figure:ReferenceToEmbed}は本論文での“実体化ビュー作成”を示したものである．
@@ -313,7 +323,7 @@ MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境�
 
 実験では全てのコレクションが従来の参照型のデータモデルを用いたシステムと実体化条件を用いずに全てのコレクションを実体化したシステム，実体化条件を用いて適宜コレクションを実体化するシステムの3つのデータベースシステムを比較する．その際，実体化を用いたシステムでは検索や更新を提案ミドルウェアを用いて処理する．
 
-この3つのシステムを比較する際，検索と更新の比率を変えた4つのクエリパターンを用いて行う．このクエリパターンを表に示す．このパターンを用いて実験A~Dを行う．
+この3つのシステムを比較する際，検索と更新の比率を変えた4つのクエリパターンを用いて行う．このクエリパターンを表に示す．このパターンを用いて実験A，B，C，Dを行う．
 \begin{table}[htb]
   \begin{center}
     \caption{クエリパターン}
@@ -332,8 +342,8 @@ MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境�
   \begin{center}
     \caption{実験で使用した検索クエリ}
 		\label{table:ExperimentFindQuery}
-    \begin{tabular}{|c|c|} \hline
-      コレクション & クエリ\\ \hline
+    \begin{tabular}{|c|l|} \hline
+      コレクション & \multicolumn{1}{|c|}{クエリ}\\ \hline
       person & db.person.find(\{\_id: testID\})populate([]);\\ \hline
 			story & db.story.find(\{\_id: testID\}).populate(["author", "fans", "publication", "comments"]);\\ \hline
       comment & db.comment.find(\{\_id: testID\}).populate(["speak.speaker", "story"]);\\ \hline
@@ -345,8 +355,8 @@ MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境�
   \begin{center}
     \caption{実験で使用した更新クエリ}
 		\label{table:ExperimentUpdateQuery}
-    \begin{tabular}{|c|c|} \hline
-      コレクション & クエリ\\ \hline
+    \begin{tabular}{|c|l|} \hline
+      コレクション & \multicolumn{1}{|c|}{クエリ}\\ \hline
       person & db.person.update(\{\_id: testID\}, \{\$set: \{name: "太郎"\}\});\\ \hline
 			story & db.story.update(\{\_id: testID\}, \{\$set: \{title: "研修資料"\}\});\\ \hline
       comment & db.comment.update(\{\_id: testID\}, \{\$set: \{"speak.comment": "いい天気"\}\});\\ \hline
@@ -358,10 +368,119 @@ MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境�
 \chapter{結果・考察}
 \label{chap:Result}
 \section{実験Aの結果}
-実験結果を図に示す．
+実験結果を図\ref{ExperimentA-find}，\ref{ExperimentA-update}，\ref{ExperimentA-total}に示す．図\ref{ExperimentA-find}，\ref{ExperimentA-update}は各コレクションにおけるクエリの平均処理時間を示している．図\ref{ExperimentA-total}は検索処理と更新処理の累計処理時間を示している．検索処理速度に関しては全実体化と提案手法が実体化なしのデータモデルより速い結果となった．一方，更新処理速度は実体化なしのデータモデルが最速であり，personコレクションに関しては全実体化と提案手法でのデータモデルが実体化なしと比べて100倍程遅い結果となった．
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentA-find.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Aの各コレクションの平均検索時間}
+	\label{ExperimentA-find}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentA-update.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Aの各コレクションの平均更新時間}
+	\label{ExperimentA-update}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentA-total.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Aの累計処理時間}
+	\label{ExperimentA-total}
+\end{figure}
+
+\section{実験Bの結果}
+実験結果を図\ref{ExperimentB-find}，\ref{ExperimentB-update}，\ref{ExperimentB-total}に示す．実験Aと同じく，検索処理で全実体化と提案手法が実体化なしと比べて1.5倍から2倍早く，更新処理で全実体化と提案手法が実体化なしと比べて100倍程度遅い結果となった．
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentB-find.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Bの各コレクションの平均検索時間}
+	\label{ExperimentB-find}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentB-update.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Bの各コレクションの平均更新時間}
+	\label{ExperimentB-update}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentB-total.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Bの累計処理時間}
+	\label{ExperimentB-total}
+\end{figure}
+
+\section{実験Cの結果}
+実験結果を図\ref{ExperimentC-find}，\ref{ExperimentC-update}，\ref{ExperimentC-total}に示す．概ね実験A，Bと同じで，実体化なしと比べて全実体化と提案手法が1.5倍~2倍検索処理で速く，更新処理で遅い結果となった．更新時間では全実体化と比べて提案手法が2倍程度速い結果となった．
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentC-find.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Cの各コレクションの平均検索時間}
+	\label{ExperimentC-find}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentC-update.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Cの各コレクションの平均更新時間}
+	\label{ExperimentC-update}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentC-total.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Cの累計処理時間}
+	\label{ExperimentC-total}
+\end{figure}
+
+\section{実験Dの結果}
+実験結果を図\ref{ExperimentD-find}，\ref{ExperimentD-update}，\ref{ExperimentD-total}に示す．実験Cと同様に実体化なしと比べて全実体化と提案手法が検索処理で速く，更新処理で遅い結果であり，提案手法は全実体化と比べて2倍程度更新速度が速い結果となった．それに付随して，累計処理時間も提案手法が全実体化と比べて2倍程度速い結果となっている．
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentD-find.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Dの各コレクションの平均検索時間}
+	\label{ExperimentD-find}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentD-update.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Dの各コレクションの平均更新時間}
+	\label{ExperimentD-update}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentD-total.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Dの累計処理時間}
+	\label{ExperimentD-total}
+\end{figure}
+
+\section{実験の考察}
+\label{sec:Consideration}
+全実体化と提案手法は実体化なしと比べて累計検索処理時間が約半減した．通常であれば元のクエリに加えて結合先のクエリをMongoDB発行しアプリケーション層でドキュメントを結合するが，Materialized Viewを用いた場合には追加のクエリ発行と結合処理を省くことができる．その為，結合処理が発生するstory，commentコレクションの検索時間が高速化した．
+
+実験を通して実体化した場合には更新時間が増大した．これはオリジナルのドキュメントに加えて，そのドキュメント自体のMaterialized Viewと，ドキュメントが埋め込まれているMaterialized Viewを更新する必要があり．MongoDB側に発行するクエリが増えるからである．今回の実験ではstoryコレクションに最大100のpersonドキュメントが埋め込まれており，personドキュメントを更新する際には実体化したpersonドキュメントと，そのドキュメントが埋め込まれているstoryドキュメントを更新する必要がある．実際に，実験Dではユーザーからのpersonコレクションへの9つのクエリに対してミドルウェアで521のクエリを発行していた．
+
+実験C，Dでは全実体化と比べて提案手法の更新処理時間が1/2になっている．これは実験A，Bと比べて更新のクエリが増えて実体化条件で用いるデータが増え，実体化選択の精度が上がったと考えられる．
+
 
 \chapter{まとめ}
 \label{chap:Conclusion}
+リレーショナルデータベースシステムで用いられる技術の一つの実体化ビューは負荷が大きい処理を事前に実データとして保持しておくことで，システムを高速化することができる．しかし，実体化ビューを作成する箇所の選択やメンテナンスを適切に行わないと，返ってボトルネックになってしまう可能性がある．本研究ではNoSQLの一種であるドキュメント指向型データベースにおける実体化ビュー選択の自動化を提案する．
+提案手法ではミドルウェアを実装し，集積したユーザーからのクエリのログを実体化する箇所の判定に用いた．また，クエリのログや処理時間などの情報を元にボトルネックとなっている実体化ビューを探して，元のデータモデルに戻す実装を行った．
+
+実験では，提案手法と全体を実体化したコレクションと元のデータモデルを比較し，提案手法の有用性を確かめた．実験の結果，提案手法と全体を実体化したコレクションが元のデータモデルと比べて検索処理時間が高速であった．実体化ビューを用いると更新処理速度が低下する傾向にあったが，あるクエリ条件下では提案手法が検索処理速度を保ちつつ，全体を実体化したコレクションの約2倍の更新速度を実現した．
+
+今後は，課題となった更新速度を克服するために実体化条件と逆実体化条件に処理時間削減率等の概念を追加し，さらなる機能向上を目指す．また，複雑なクエリパターンや時系列でクエリパターンが変化する状況でも提案手法の有用性を示せるように，ミドルウェアの性能を向上させる必要がある．
+
 
 \chapter*{謝辞}
 \addcontentsline{toc}{chapter}{\numberline{}謝辞}
