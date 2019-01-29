@@ -21,3 +21,4 @@ python/fixtures/components
 *.fdb_latexmk
 *.lof
 *.lot
+paper/mast/sections/**/*.pdf

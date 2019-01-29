@@ -1,0 +1,51 @@
+\documentclass[a4paper,11pt]{ujreport}
+\input{sections/preamble}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+\newpage
+
+\thispagestyle{empty}
+\vspace*{20pt plus 1fil}
+\parindent=1zw
+\noindent
+
+\input{sections/0_abstract/abstract} % 概要
+
+\par
+\vspace{0pt plus 1fil}
+\newpage
+
+\pagenumbering{roman} % I, II, III, IV
+\tableofcontents
+\listoffigures
+\listoftables
+
+\pagebreak \setcounter{page}{1}
+\pagenumbering{arabic} % 1,2,3
+
+\input{sections/1_introduction/introduction} % はじめに
+\input{sections/2_literature_review/literature_review} % 関連技術
+\input{sections/3_proposed_algorithm/proposed_algorithm} % 提案手法
+\input{sections/4_experiment/experiment} % 実験
+\input{sections/5_result/result} % 結果・考察
+\input{sections/6_conclusion/conclusion} % まとめ
+
+\chapter*{謝辞}
+\addcontentsline{toc}{chapter}{\numberline{}謝辞}
+本研究を進めるにあたり，指導教員の古瀬一隆先生と陳漢雄先生から，丁寧かつ熱心なご指導を賜りました．ここに感謝の意を表します．
+また，研究室での議論を通じ，多くの知識をいただいたDSE研究室の皆様に感謝いたします．
+
+\newpage
+
+\addcontentsline{toc}{chapter}{\numberline{}参考文献}
+\renewcommand{\bibname}{参考文献}
+
+%% 参考文献
+\bibliography{MaterializedView}
+\bibliographystyle{junsrt}
+%% [compile] upbibtex sample; uplatex sample; uplatex sample;
+
+
+\end{document}
