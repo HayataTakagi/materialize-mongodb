@@ -24,3 +24,4 @@ python/fixtures/components
 paper/mast/sections/**/*.pdf
 /Vagrantfile
 *.box
+paper/mast/sections/**/src
