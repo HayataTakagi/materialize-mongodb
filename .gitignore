@@ -22,6 +22,6 @@ python/fixtures/components
 *.lof
 *.lot
 paper/mast/sections/**/*.pdf
+paper/mast/sections/**/src
 /Vagrantfile
 *.box
-paper/mast/sections/**/src
