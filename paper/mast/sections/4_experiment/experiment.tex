@@ -1,5 +1,5 @@
 \documentclass[a4paper,11pt]{ujreport}
-\input{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/sections/preamble}
+\input{src/preamble}
 
 \addtocounter{page}{2} %単体でコンパイルした際の調整用
 \begin{document}
@@ -25,20 +25,20 @@ MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境�
 \end{table}
 
 \section{実験方法}
-本論文の実験で用いたコレクションはpersonコレクション，storyコレクション，commentコレクション，publisherコレクションである．コレクションの構造，コレクション同士の参照に関しては図\ref{ExperimentCollection}，図\ref{ExperimentCollection2}に示す．storyコレクションには筆者として1つのpersonドキュメントのidを格納する．このstoryドキュメントが検索された際には筆者のidをperosnコレクションから検索し，結合して結果を返す．同じようにファンとしてpersonドキュメントのidを配列で格納することで複数のpersonドキュメントをstoryドキュメントに埋め込む．実際の実験データではファンとして100のpersonドキュメントのidを埋め込む．その際，100回結合処理を実行することになる．出版社としてpublisherドキュメントのidも格納する．
+本論文の実験で用いたコレクションはpersonコレクション，storyコレクション，commentコレクション，publisherコレクションである．コレクションの構造，コレクション同士の参照に関しては図\ref{figure:ExperimentCollection}，図\ref{figure:ExperimentCollection2}に示す．storyコレクションには筆者として1つのpersonドキュメントのidを格納する．このstoryドキュメントが検索された際には筆者のidをperosnコレクションから検索し，結合して結果を返す．同じようにファンとしてpersonドキュメントのidを配列で格納することで複数のpersonドキュメントをstoryドキュメントに埋め込む．実際の実験データではファンとして100のpersonドキュメントのidを埋め込む．その際，100回結合処理を実行することになる．出版社としてpublisherドキュメントのidも格納する．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em, trim=10em 2em 10em 2em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentCollection.eps} %[trim=left bottom right top]
+		\includegraphics[width=30em, trim=10em 2em 10em 2em]{src/ExperimentCollection.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{storyコレクションから各コレクションへの参照}
-	\label{ExperimentCollection}
+	\label{figure:ExperimentCollection}
 \end{figure}
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em, trim=10em 2em 10em 2em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentCollection2.eps} %[trim=left bottom right top]
+		\includegraphics[width=30em, trim=10em 2em 10em 2em]{src/ExperimentCollection2.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{commentコレクションから各コレクションへの参照}
-	\label{ExperimentCollection2}
+	\label{figure:ExperimentCollection2}
 \end{figure}
 実験において使用するデータは全て参照型のデータモデルで挿入する．実体化していない状態で検索された場合には結合処理を行い結果を返す．実験に用いるドキュメントはPythonのライブラリであるfaker\cite{faker}を用いて作成した．各コレクションに対して1000ドキュメントを作成した．
 

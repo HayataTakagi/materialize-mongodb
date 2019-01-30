@@ -1,5 +1,5 @@
 \documentclass[a4paper,11pt]{ujreport}
-\input{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/sections/preamble}
+\input{src/preamble}
 
 \addtocounter{page}{2} %単体でコンパイルした際の調整用
 \begin{document}
@@ -11,14 +11,14 @@
 また．図\ref{figure:Reference}と図\ref{figure:Embed}のドキュメントを得るためのクエリを表\ref{table:MongoReferenceEmbedFind}に示す．idが123456のドキュメントを更新するクエリを表\ref{table:MongoReferenceEmbedUpdate}に示す．なお，表\ref{table:MongoReferenceEmbedUpdate}の埋込型に関しては，埋め込まれているコレクション全てに対してクエリを実行する必要がある．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em, trim=0 5em 0 2em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/Reference.eps} %[trim=left bottom right top]
+		\includegraphics[width=30em, trim=0 5em 0 2em]{src/Reference.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{参照型}
 	\label{figure:Reference}
 \end{figure}
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em, trim=0 7em 0 0em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/Embed.eps} %[trim=left bottom right top]
+		\includegraphics[width=30em, trim=0 7em 0 0em]{src/Embed.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{埋込型}
 	\label{figure:Embed}
@@ -65,7 +65,7 @@
 本論文ではドキュメント指向型データベースの埋込型データモデルをリレーショナルデータベースの実体化ビューと置き換えて考える．ドキュメント指向型データベースのよくアクセスされる部分や処理速度がネックとなっている部分を埋込型として別コレクションに保持することで“実体化ビュー作成”，どの部分を埋込型にするかの判断を“実体化ビュー選択”とする．図\ref{figure:ReferenceToEmbed}は本論文での“実体化ビュー作成”を示したものである．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em, trim=0 13em 0 0]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ReferenceToEmbed.eps} %[trim=left bottom right top]
+		\includegraphics[width=30em, trim=0 13em 0 0]{src/ReferenceToEmbed.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{参照型から埋込型への書き換え}
 	\label{figure:ReferenceToEmbed}
@@ -74,7 +74,7 @@
 実装システムについて図\ref{figure:Midleware}に示す．ユーザーからのデータアクセスから実体化ビュー作成までの流れを図\ref{figure:Midleware}を用いて説明する．
 \begin{figure}[h]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/Midleware.eps}
+		\includegraphics[width=30em]{src/Midleware.eps}
 	\end{center}
 	\caption{提案ミドルウェア（実体化前）}
 	\label{figure:Midleware}
@@ -84,7 +84,7 @@
 実体化した後のデータアクセスの流れを図\ref{figure:MidlewareMv}に示す．図\ref{figure:MidlewareMv}-①’アプリケーションからデータベースにアクセスがあった場合，まずログからアクセスされたデータが実体化されているか判定する．図\ref{figure:MidlewareMv}-②’実体化されている場合はクエリを書き換えて実体化ビューから結果を取得する．図\ref{figure:MidlewareMv}-③’アプリケーションに結果を返す際には元のクエリに合うように適宜変換する．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/MidlewareMv.eps} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/MidlewareMv.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{提案ミドルウェア（実体化後）}
 	\label{figure:MidlewareMv}

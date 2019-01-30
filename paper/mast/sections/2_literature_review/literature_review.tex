@@ -1,5 +1,5 @@
 \documentclass[a4paper,11pt]{ujreport}
-\input{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/sections/preamble}
+\input{src/preamble}
 
 \addtocounter{page}{2} %単体でコンパイルした際の調整用
 \begin{document}
@@ -10,7 +10,7 @@
 リレーショナルデータベースにおけるビュー (view) はリレーショナルデータモデルの発案者であるコッドにより導入された概念であり\cite{Codd1974RecentII}，1つ以上の表（または他のビュー）から任意のデータを選択し，それらを表したものである．ビューの実体はデータを持たないSQL文であり，実行された際にはバックグラウンドでSELECT処理が毎回実行される．それに対して実体化ビュー（Materialized View）はビューと同じく複数の表の結合処理や集計処理を行うが，その結果を実際のテーブルに保持する．保持された実体化ビューは元のテーブルが更新されるたびに更新される．そのため，最新でない状態を取得する可能性はあるが，結合処理が必要ないため効率的なアクセスが可能になる．その一方，更新処理が増加するので実体化ビュー化する部分の選択は慎重に行う必要があり，この作業を自動化する研究が行われている\cite{mistry2001materialized}．図\ref{figure:MvDescription}は1対1のデータモデルの実体化ビューを図示したものである．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=32em, trim=0 5em 0 0]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/MvDescription.eps} %[trim=left bottom right top]
+		\includegraphics[width=32em, trim=0 5em 0 0]{src/MvDescription.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{実体化ビュー}
 	\label{figure:MvDescription}
@@ -20,7 +20,7 @@
 多対多の結合を表す際には中間テーブルを用意してそれぞれのテーブルからレコードを結合する．その際の流れを図\ref{figure:MvDescription2}に示す．履修中間テーブルに生徒idと授業idを格納している．idが00001の生徒が履修している授業を取得する際には履修中間テーブルのstudent\_idが00001のレコードを取得し，付随するclass\_idを用いて授業の情報を取得する．結合元のテーブルのレコード数が無数にある場合には結合元テーブルでの検索時間が増加し，結合元のテーブルのレコード数の増加と共に中間テーブルのレコード数も増える傾向にあるので，中間テーブルでの検索時間も増加する．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=32em, trim=0 5em 0 0]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/MvDescription2.eps} %[trim=left bottom right top]
+		\includegraphics[width=32em, trim=0 5em 0 0]{src/MvDescription2.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{多対多の結合}
 	\label{figure:MvDescription2}
@@ -91,7 +91,7 @@ MongoDBではデータの格納にJSONをバイナリエンコーディングし
 
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em, trim=10em 18em 10em 0em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/MongoJson.eps} %[trim=left bottom right top]
+		\includegraphics[width=30em, trim=10em 18em 10em 0em]{src/MongoJson.eps} %[trim=left bottom right top]
 	\end{center}
 	\caption{MongoDBから返されるクエリセットの例}
 	\label{MongoJson}

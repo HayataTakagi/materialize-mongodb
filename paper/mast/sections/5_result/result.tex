@@ -1,5 +1,5 @@
 \documentclass[a4paper,11pt]{ujreport}
-\input{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/sections/preamble}
+\input{src/preamble}
 
 \addtocounter{page}{2} %単体でコンパイルした際の調整用
 \begin{document}
@@ -10,21 +10,21 @@
 実験結果を図\ref{ExperimentA-find}，\ref{ExperimentA-update}，\ref{ExperimentA-total}に示す．図\ref{ExperimentA-find}，\ref{ExperimentA-update}は各コレクションにおけるクエリの平均処理時間を示している．図\ref{ExperimentA-total}は検索処理と更新処理の累計処理時間を示している．検索処理速度に関しては全実体化と提案手法が実体化なしのデータモデルより速い結果となった．一方，更新処理速度は実体化なしのデータモデルが最速であり，personコレクションに関しては全実体化と提案手法でのデータモデルが実体化なしと比べて100倍程遅い結果となった．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentA-find.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentA-find.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Aの各コレクションの平均検索時間}
 	\label{ExperimentA-find}
 \end{figure}
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentA-update.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentA-update.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Aの各コレクションの平均更新時間}
 	\label{ExperimentA-update}
 \end{figure}
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentA-total.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentA-total.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Aの累計処理時間}
 	\label{ExperimentA-total}
@@ -34,21 +34,21 @@
 実験結果を図\ref{ExperimentB-find}，\ref{ExperimentB-update}，\ref{ExperimentB-total}に示す．実験Aと同じく，検索処理で全実体化と提案手法が実体化なしと比べて1.5倍から2倍早く，更新処理で全実体化と提案手法が実体化なしと比べて100倍程度遅い結果となった．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentB-find.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentB-find.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Bの各コレクションの平均検索時間}
 	\label{ExperimentB-find}
 \end{figure}
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentB-update.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentB-update.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Bの各コレクションの平均更新時間}
 	\label{ExperimentB-update}
 \end{figure}
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentB-total.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentB-total.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Bの累計処理時間}
 	\label{ExperimentB-total}
@@ -58,21 +58,21 @@
 実験結果を図\ref{ExperimentC-find}，\ref{ExperimentC-update}，\ref{ExperimentC-total}に示す．概ね実験A，Bと同じで，実体化なしと比べて全実体化と提案手法が1.5倍~2倍検索処理で速く，更新処理で遅い結果となった．更新時間では全実体化と比べて提案手法が2倍程度速い結果となった．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentC-find.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentC-find.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Cの各コレクションの平均検索時間}
 	\label{ExperimentC-find}
 \end{figure}
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentC-update.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentC-update.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Cの各コレクションの平均更新時間}
 	\label{ExperimentC-update}
 \end{figure}
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentC-total.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentC-total.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Cの累計処理時間}
 	\label{ExperimentC-total}
@@ -82,21 +82,21 @@
 実験結果を図\ref{ExperimentD-find}，\ref{ExperimentD-update}，\ref{ExperimentD-total}に示す．実験Cと同様に実体化なしと比べて全実体化と提案手法が検索処理で速く，更新処理で遅い結果であり，提案手法は全実体化と比べて2倍程度更新速度が速い結果となった．それに付随して，累計処理時間も提案手法が全実体化と比べて2倍程度速い結果となっている．
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentD-find.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentD-find.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Dの各コレクションの平均検索時間}
 	\label{ExperimentD-find}
 \end{figure}
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentD-update.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentD-update.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Dの各コレクションの平均更新時間}
 	\label{ExperimentD-update}
 \end{figure}
 \begin{figure}[htbp]
 	\begin{center}
-		\includegraphics[width=30em]{/Users/takagihayata/workspace/materialize-mongodb/paper/mast/src/ExperimentD-total.pdf} %[trim=left bottom right top]
+		\includegraphics[width=30em]{src/ExperimentD-total.pdf} %[trim=left bottom right top]
 	\end{center}
 	\caption{実験Dの累計処理時間}
 	\label{ExperimentD-total}
