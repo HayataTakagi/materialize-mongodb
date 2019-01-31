@@ -60,8 +60,8 @@ Object.keys(schemaList).forEach(function(value) {
         self._mongooseOptions_ori = self._mongooseOptions;
       }
 
-      if (env.IS_USE_MV != 1) {
-        showLog("Prehook | \"IS_USE_MV\" is set FALSE", lib.normalLog);
+      if (global.isUseMv != 1) {
+        showLog("Prehook | \"global.isUseMv\" is set FALSE", lib.normalLog);
         preEndTime = performance.now();  // クエリログ用
         next();
       } else {

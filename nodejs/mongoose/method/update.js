@@ -6,6 +6,7 @@ const env = process.env;
 const modelBilder = require('./../static/modelBilder');
 const lib = require('./../lib');
 const mv = require('./materializedView');
+const index = require('./../index');
 const showLog = lib.showLog;
 
 // モデルリストの定義
@@ -44,11 +45,11 @@ let updateDocuments = function updateDocuments(body ,callback) {
             callback(err, null);
           }
           showLog(`updateDocuments | (ORIGINAL)Updated to \n${doc}`, lib.normalLog);
-          modelBilder.queryLogUpdate(processId, body.modelName, null, mvCount && env.IS_USE_MV);  // ログ書き込み
+          modelBilder.queryLogUpdate(processId, body.modelName, null, mvCount && global.isUseMv);  // ログ書き込み
         });
       });
-      if (env.IS_USE_MV != 1) {
-        showLog("updateDocuments | \"IS_USE_MV\" is set FALSE", lib.lowLog);
+      if (global.isUseMv != 1) {
+        showLog("updateDocuments | \"global.isUseMv\" is set FALSE", lib.lowLog);
       } else {
         // オリジナルに関わるMVを更新
         updateMvDocuments(docs, body.modelName, body.query, body.updateDocument, processId);

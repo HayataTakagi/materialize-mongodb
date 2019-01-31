@@ -177,6 +177,11 @@ function setGlobalVariable(body) {
   global.processNum = body.processNum;
   global.processNumAll = body.processNumAll;
   global.preTimeGlobal = performance.now();
+  if (body.isUseMv === 0) {
+    global.isUseMv = body.isUseMv;
+  } else {
+    global.isUseMv = env.IS_USE_MV;
+  }
 }
 
 // update用グローバル変数をセット

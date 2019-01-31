@@ -7,7 +7,8 @@ if __name__ == '__main__':
     # update_process = [30,50,70,80,90]
     # update_process = [50,70,90]
     # update_process = [50]
-    update_process = [300,600]
+    # update_process = [300,600]
+    update_process = [100,400,600,800,1000,1200,1400,1500,1600,1800]
     method_array = []
     for item in trial_array:
         if item in update_process:

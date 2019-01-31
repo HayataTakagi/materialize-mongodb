@@ -114,6 +114,14 @@ let removeCollections = function removeCollections (body, callback) {
       });
     });
   }
+  if (body.isRemoveMvLog) {
+    showLog(`Remove (MVLOG)-collections of [Mvlog]`, lib.topLog);
+    // コレクションの削除処理
+    db.dropCollection('mvlogs', (err, res) => {
+      if (err) showLog(`Error remove (MVLOG)-collections`, lib.normalLog);
+      if (res) showLog(`Success remove (MVLOG)-collections`, lib.normalLog);
+    });
+  }
   callback(null, {"message": "OK"});
 };
 
