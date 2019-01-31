@@ -1,16 +1,8 @@
 #!/bin/sh
-curl -X POST \
-  http://192.168.33.11:3000/insertMany \
-  -H 'Content-Type: application/json' \
-  -H 'cache-control: no-cache' \
-  -d @./../../../python/fixtures/components/104_publisher_1.json
-curl -X POST \
-  http://192.168.33.11:3000/insertMany \
-  -H 'Content-Type: application/json' \
-  -H 'cache-control: no-cache' \
-  -d @./../../../python/fixtures/components/104_publisher_2.json
-curl -X POST \
-  http://192.168.33.11:3000/insertMany \
-  -H 'Content-Type: application/json' \
-  -H 'cache-control: no-cache' \
-  -d @./../../../python/fixtures/components/104_publisher_3.json
+for (( i = 0; i < 100; i++ )); do
+  curl -X POST \
+    http://192.168.33.11:3000/insertMany \
+    -H 'Content-Type: application/json' \
+    -H 'cache-control: no-cache' \
+    -d @./../../../python/fixtures/components/104_publisher_$(($i+1)).json
+done

@@ -8,9 +8,9 @@ def story():
     fake = Factory.create('ja_JP')
     person_array = range(10100000, 10100000+Ex01.person_number)  # ユーザーidのArray
     publisher_array = range(10400000, 10400000+Ex01.publisher_number)
-    for j in range(15):
+    for j in range(Ex01.story_split):
         ys = []  # json書き込み用配列に追加
-        for i in range(round(Ex01.story_number*j/15), round(Ex01.story_number*(j+1)/15)):
+        for i in range(round(Ex01.story_number*j/Ex01.story_split), round(Ex01.story_number*(j+1)/Ex01.story_split)):
             date = fake.date_time_this_decade().strftime("%Y-%m-%d %H:%M:%S")  # created_at & updated_at用
             data = cl.OrderedDict()  # 格納するフィールドを定義
             data["_id"] = str(102) + str(i).zfill(5)
