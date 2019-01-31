@@ -2,6 +2,7 @@
 \input{src/preamble}
 
 \addtocounter{page}{2} %単体でコンパイルした際の調整用
+\addtocounter{chapter}{1} %単体でコンパイルした際の調整用
 \begin{document}
 
 \chapter{関連技術}
@@ -73,8 +74,18 @@ MongoDBではデータの格納にJSONをバイナリエンコーディングし
     \caption{RDBMSとMongoDBにおける検索クエリ}
 		\label{table:RDB_Mongo_Find}
     \begin{tabular}{|c|l|} \hline
-			RDBMS & SELECT * FROM comments WHERE story = "Next Generations";\\ \hline
-			MongoDB & db.comments.find(\{story: "Next Generations"\});\\ \hline
+			RDBMS &
+			\begin{tabular}{l}
+				SELECT *\\
+				FROM comments\\
+				WHERE story = "Next Generations";\\
+			\end{tabular}\\ \hline
+			MongoDB &
+			\begin{tabular}{l}
+				db.comments.find(\{\\
+				\ \ story: "Next Generations"\\
+				\});\\
+			\end{tabular}\\ \hline
     \end{tabular}
   \end{center}
 \end{table}
@@ -83,8 +94,20 @@ MongoDBではデータの格納にJSONをバイナリエンコーディングし
     \caption{RDBMSとMongoDBにおける更新クエリ}
 		\label{table:RDB_Mongo_Update}
     \begin{tabular}{|c|l|} \hline
-			RDBMS & UPDATE comments SET story = "Next Generations 2" WHERE story = "Next Generations";\\ \hline
-			MongoDB & db.comments.update(\{story: "Next Generations"\}, \{\$set: \{story: "Next Generations 2"\}\});\\ \hline
+			RDBMS &
+			\begin{tabular}{l}
+				UPDATE comments\\
+				SET story = "Next Generations 2"\\
+				WHERE story = "Next Generations";
+			\end{tabular}\\ \hline
+			MongoDB &
+			\begin{tabular}{l}
+				db.comments.update(\{\\
+				\ \ story: "Next Generations"\\
+				\}, \{\\
+				\ \ \$set: \{story: "Next Generations 2"\}\\
+				\});\\
+			\end{tabular}\\ \hline
     \end{tabular}
   \end{center}
 \end{table}
