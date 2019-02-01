@@ -25,3 +25,4 @@ paper/mast/sections/**/*.pdf
 paper/mast/sections/**/src
 /Vagrantfile
 *.box
+log

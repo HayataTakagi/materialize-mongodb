@@ -58,6 +58,7 @@ app.get("/getModelList", function(req, res, next){
 app.post("/insertMany", function(req, res, next){
   let requiredVariables = ["modelName", "document"];
   initPostMethod("insertMany", requiredVariables, req.body, (err) => {
+    lib.showLog(`Starting insertMany Model: ${req.body.modelName}`, lib.topLog);
     if (err) return res.json(err);
     modelBilder.modelList[req.body.modelName].
     insertMany(req.body.document, (err, docs) => {
@@ -176,6 +177,7 @@ function setGlobalVariable(body) {
   global.logLevel = body.logLevel ? body.logLevel : lib.topLog;
   global.processNum = body.processNum;
   global.processNumAll = body.processNumAll;
+  global.testPattern = body.testPattern;
   global.preTimeGlobal = performance.now();
   if (body.isUseMv === 0) {
     global.isUseMv = body.isUseMv;

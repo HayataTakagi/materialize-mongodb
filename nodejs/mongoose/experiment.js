@@ -1,5 +1,7 @@
 // 外部ライブラリのインポート
 const mongoose = require('mongoose');
+// Mngooseのバッファの設定
+mongoose.set('bufferCommands', false);
 const utils = require('mongoose-utils/node_modules/mongoose/lib/utils');
 const { PerformanceObserver, performance } = require('perf_hooks');
 require('dotenv').config();
@@ -20,7 +22,7 @@ const populateModelList = modelBilder.populateModelList;
 const populateListForModel = modelBilder.populateListForModel;
 
 // Mngooseのバッファの設定
-mongoose.set('bufferCommands', true);
+mongoose.set('bufferCommands', false);
 mongoose.connect(`mongodb://${env.DB_IP}/${env.DB_NAME}`, { useNewUrlParser: true });
 var db = mongoose.connection;
 
@@ -120,6 +122,13 @@ let removeCollections = function removeCollections (body, callback) {
     db.dropCollection('mvlogs', (err, res) => {
       if (err) showLog(`Error remove (MVLOG)-collections`, lib.normalLog);
       if (res) showLog(`Success remove (MVLOG)-collections`, lib.normalLog);
+    });
+  }
+  if (body.removeMvName) {
+    showLog(`HARD Remove (MV)-collections of ${body.removeMvName}`, lib.topLog);
+    db.dropCollection(body.removeMvName, (err, res) => {
+      if (err) showLog(`Error HARD Remove (MV)-collections of ${body.removeMvName}`, lib.normalLog);
+      if (res) showLog(`Success HARD Remove (MV)-collections of ${body.removeMvName}`, lib.normalLog);
     });
   }
   callback(null, {"message": "OK"});

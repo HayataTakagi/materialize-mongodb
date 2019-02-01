@@ -20,6 +20,8 @@ def publisher():
         doc = cl.OrderedDict()
         doc["modelName"] = "Publisher"
         doc["logLevel"] = 1
+        doc["processNum"] = j+1
+        doc["processNumAll"] = Ex01.publisher_split
         doc["document"] = ys
         fw = open(f'./../components/104_publisher_{j+1}.json', 'w')
         json.dump(doc, fw, indent=2, ensure_ascii=False)  # jsonファイルを出力

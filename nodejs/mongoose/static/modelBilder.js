@@ -11,7 +11,7 @@ const schemaIndex = require('./schemaIndex');
 const showLog = lib.showLog;
 
 // Mngooseのバッファの設定
-mongoose.set('bufferCommands', true);
+mongoose.set('bufferCommands', false);
 mongoose.connect(`mongodb://${env.DB_IP}/${env.DB_NAME}`, { useNewUrlParser: true });
 var db = mongoose.connection;
 var Schema = mongoose.Schema;

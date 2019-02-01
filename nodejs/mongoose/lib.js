@@ -8,7 +8,8 @@ module.exports = {
       let processMessage = global.processNum && global.processNumAll ? `${global.processNum}/${global.processNumAll}|` : "";
       let callerMessage = showLog.caller.name ? `${showLog.caller.name} | ` : "";
       let elapsedTime = global.preTimeGlobal ? (performance.now() - global.preTimeGlobal).toFixed(3) : "NaN";
-      console.log(`[${getNowTime()}|${processMessage}${elapsedTime}]${callerMessage}${msg}`);
+      let testPattern = global.testPattern ? `<${global.testPattern}>` : "";
+      console.log(`[${getNowTime()}|${testPattern}${processMessage}${elapsedTime}]${callerMessage}${msg}`);
     }
   },
 

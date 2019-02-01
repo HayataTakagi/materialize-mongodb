@@ -1,12 +1,18 @@
 // 外部ライブラリのインポート
+const mongoose = require('mongoose');
 const utils = require('mongoose-utils/node_modules/mongoose/lib/utils');
 const { PerformanceObserver, performance } = require('perf_hooks');
 const co = require('co');
 require('dotenv').config();
 const env = process.env;
+// Mngooseのバッファの設定
+mongoose.set('bufferCommands', false);
+mongoose.connect(`mongodb://${env.DB_IP}/${env.DB_NAME}`, { useNewUrlParser: true });
+var db = mongoose.connection;
 // 自作外部ファイルのインポート
 const modelBilder = require('./../static/modelBilder');
 const lib = require('./../lib');
+const experiment = require('./../experiment');
 const showLog = lib.showLog;
 
 // モデルリストの定義
@@ -32,35 +38,74 @@ let createMvDocument = function createMvDocument(modelName, populate, processId,
   find(query).
   populate(populate).
   exec(function (err, mvDocuments) {
-    if (err) return console.log(err);
-    // promise all 後に処理 & co then 後に処理
-    const mvSavePromises = Object.keys(mvDocuments).map((value) => {
-      // ログ要素を追加
-      mvDocuments[value] = mvDocuments[value].toObject();
-      mvDocuments[value].log_populate = populate;
-      mvDocuments[value].log_updated_at = new Date();
-      // mvをdbに保存
-      mvModelList[modelName].replaceOne(
-        {_id: mvDocuments[value]._id},  // idで検索する
-        mvDocuments[value],  // 保存するobject
-        {upsert: true, setDefaultsOnInsert: true},
-        (err, res) => {
-          if (processId != null) {
-            modelBilder.queryLogUpdate(processId, parentModelName, `Mv${modelName}`, true);
-          }
-          showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}, now:${performance.now()}`, logLev);
-        });
+    if (documentIds) {
+      // idが指定されている場合はMVを個別に更新する
+      if (err) return console.log(err);
+      showLog(`createMvDocument | Return mvDocuments From ORIGINAL ${modelName}`, lib.normalLog);
+      Object.keys(mvDocuments).forEach((value) => {
+        // ログ要素を追加
+        mvDocuments[value] = mvDocuments[value].toObject();
+        mvDocuments[value].log_populate = populate;
+        mvDocuments[value].log_updated_at = new Date();
+        showLog(`createMvDocument | Saving to Mv${modelName} about id: ${mvDocuments[value]._id}`, logLev);
+        // mvをdbに保存
+        mvModelList[modelName].replaceOne(
+          {_id: mvDocuments[value]._id},  // idで検索する
+          mvDocuments[value],  // 保存するobject
+          {upsert: true, setDefaultsOnInsert: true},
+          (err, res) => {
+            if (processId != null) {
+              modelBilder.queryLogUpdate(processId, parentModelName, `Mv${modelName}`, true);
+            }
+            showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}, now:${performance.now()}`, logLev);
+          });
       });
-      co(function *(){
-        Promise.all(mvSavePromises).then(() => {
-          // something
+      createMvLog(modelName, collectionName, populate);
+    } else {
+      // モデル全体をMV化する場合にはmvコレクションを削除し,新しくinsertManyする
+      hardRemoveMvDocument(lib.getMvCollectionName(collectionName), (err, res) => {
+        if (err) {
+          showLog(`createMvDocument | Miss Remove Old Mv of ${modelName}`, lib.wasteLog);
+        }
+        showLog(`createMvDocument | Finish Remove Old Mv of ${modelName}`, lib.wasteLog);
+        Object.keys(mvDocuments).forEach((value) => {
+          // ログ要素を追加
+          mvDocuments[value] = mvDocuments[value].toObject();
+          mvDocuments[value].log_populate = populate;
         });
-      }).then(() => {
-        // MVログを記載
+        showLog(`createMvDocument | Finish set Variables Mv of ${modelName}`, lib.wasteLog);
+        let divideLength = 20;
+        // for(let i = 0; i < mvDocuments.length; i += divideLength){
+        for(let i = 0; i < 2000; i += divideLength){
+          // 指定した個数ずつに分割する
+          let splitmvDocuments = mvDocuments.slice(i, i + divideLength);
+          showLog(`createMvDocument | Finish split MvDocuments of ${modelName},${i}`, lib.wasteLog);
+          // mvを保存
+          modelBilder.mvModelList[modelName].
+          insertMany(splitmvDocuments, (err, docs) => {
+            if (err) return console.log(err);
+            showLog(`createMvDocument | Finish Create Mv(${i}/${mvDocuments.length}) Collection of ${modelName}`, lib.normalLog);
+          });
+        }
+        // MVログを記録
         createMvLog(modelName, collectionName, populate);
       });
     }
-  );
+  });
+};
+
+// MVドキュメントの初期化
+let hardRemoveMvDocument = (removeMvName, callback) => {
+  showLog(`HARD Remove (MV)-collections of ${removeMvName}`, lib.topLog);
+  db.dropCollection(removeMvName, (err, res) => {
+    if (err) {
+      showLog(`Error HARD Remove (MV)-collections of ${removeMvName}`, lib.normalLog);
+      callback(err, null);
+    } else {
+      showLog(`Success HARD Remove (MV)-collections of ${removeMvName}`, lib.normalLog);
+      callback(null, res);
+    }
+  });
 };
 
 // 全てのモデルに対してMV作成

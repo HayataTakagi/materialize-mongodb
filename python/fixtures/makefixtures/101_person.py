@@ -20,6 +20,8 @@ def person():
         doc = cl.OrderedDict()
         doc["modelName"] = "Person"
         doc["logLevel"] = 1
+        doc["processNum"] = j+1
+        doc["processNumAll"] = Ex01.person_split
         doc["document"] = ys
         fw = open(f'./../components/101_person_{j+1}.json', 'w')
         json.dump(doc, fw, indent=2, ensure_ascii=False)  # jsonファイルを出力
