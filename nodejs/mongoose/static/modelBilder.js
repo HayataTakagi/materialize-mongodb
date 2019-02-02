@@ -171,7 +171,7 @@ function queryLogFindOne(elapsedTime, obj) {
 }
 
 // クエリログの保存(update)
-let queryLogUpdate = function queryLogUpdate(processId, modelName, mvModelName=null, isMv) {
+let queryLogUpdate = async (processId, modelName, mvModelName=null, isMv) => {
   showLog('Writing Query Log', lib.wasteLog);
   let elapsedTime = performance.now() - startTimeList[processId];
   let saveObject = {
@@ -192,9 +192,8 @@ let queryLogUpdate = function queryLogUpdate(processId, modelName, mvModelName=n
     saveObject.test_id = global.testId;
   }
   // ログをDBに書き込み
-  logModelList['Userlog'].insertMany(saveObject, function(err, docs) {
-    if (err) return console.log(err);
-  });
+  let response = await logModelList['Userlog'].insertMany(saveObject);
+  return response;
 };
 
 // MV参照へのクエリ書き換え

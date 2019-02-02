@@ -18,7 +18,7 @@ const populateModelList = modelBilder.populateModelList;
 const populateListForModel = modelBilder.populateListForModel;
 
 // オリジナルコレクション&MV更新処理
-let updateDocuments = function updateDocuments(body ,callback) {
+let updateDocuments = async (body ,callback) => {
   showLog('Starting updateDocuments' , lib.topLog);
   let processId = body.processId ? body.processId : "NoName";
   modelBilder.startTimeList[processId] = performance.now();
@@ -30,7 +30,7 @@ let updateDocuments = function updateDocuments(body ,callback) {
       callback(err, null);
     }
     // オリジナル自体のMVが存在するか
-    logModelList['Mvlog'].countDocuments({original_model: body.modelName, is_deleted: false}, (err, mvCount)=> {
+    logModelList['Mvlog'].countDocuments({original_model: body.modelName, is_deleted: false}, async (err, mvCount)=> {
       // オリジナルコレクションの更新
       Object.keys(docs).forEach((value) => {
         // updated_atを更新
@@ -52,7 +52,7 @@ let updateDocuments = function updateDocuments(body ,callback) {
         showLog("updateDocuments | \"global.isUseMv\" is set FALSE", lib.lowLog);
       } else {
         // オリジナルに関わるMVを更新
-        updateMvDocuments(docs, body.modelName, body.query, body.updateDocument, processId);
+        await updateMvDocuments(docs, body.modelName, body.query, body.updateDocument, processId);
       }
       callback(null, docs);
     });
@@ -60,75 +60,67 @@ let updateDocuments = function updateDocuments(body ,callback) {
 };
 
 // mvを更新する
-function updateMvDocuments(originalDocs, modelName, query, updateDocument, processId) {
+let updateMvDocuments = async (originalDocs, modelName, query, updateDocument, processId) => {
   // MVコレクションの更新
   // MV更新処理(parent)
   showLog("(PARENT-POPULATE)Start updating MvDocuments" , lib.normalLog);
   var doc_ids = Object.keys(originalDocs).map((element) => {
     return originalDocs[element]._id;
   });
-  logModelList['Mvlog'].find({original_model: modelName, is_deleted: false}, (err, docs) => {
-    if (err) {
-      console.log(err);
-      showLog('End updateDocuments' , lib.lowLog);
-      callback(err, null);
-    }
-    // そのModel自体がMV化されている際に更新処理を行う
-    if (docs.length !== 1) {
-      showLog(`updateMvDocuments | (PARENT-POPULATE)NOT Updating ${modelName}'s MV collection BECAUSE ${modelName} doesn't have MV.` , lib.normalLog);
-    } else {
-      showLog(`updateMvDocuments | (PARENT-POPULATE)Updating ${modelName}'s MV collection.`, lib.normalLog);
-      mv.createMvDocument(modelName, docs[0].populate, processId, modelName, doc_ids);
-    }
-  });
+  let mvLogRes = await logModelList['Mvlog'].find({original_model: modelName, is_deleted: false}).exec();
+  // そのModel自体がMV化されている際に更新処理を行う
+  if (mvLogRes.length !== 1) {
+    showLog(`updateMvDocuments | (PARENT-POPULATE)NOT Updating ${modelName}'s MV collection BECAUSE ${modelName} doesn't have MV.` , lib.normalLog);
+  } else {
+    showLog(`updateMvDocuments | (PARENT-POPULATE)Updating ${modelName}'s MV collection.`, lib.normalLog);
+    await mv.createMvDocument(modelName, mvLogRes[0].populate, processId, modelName, doc_ids);
+  }
 
   // MV更新処理(children)
   showLog("(CHILDREN-POPULATE)Start updating MvDocuments" , lib.normalLog);
-  logModelList['Mvlog'].find({populate_model: {$elemMatch:{$eq: modelName}}, is_deleted: false}, (err, docs) => {
-    if (err) {
-      console.log(err);
-      showLog('(CHILDREN-POPULATE)End updateDocuments BECAUSE Error' , lib.topLog);
-      callback(err, null);
-    }
-    if (docs.length < 1) {
-      showLog(`updateMvDocuments | (CHILDREN-POPULATE)NOT Updating populate-${modelName}'s MV collection BECAUSE populate-${modelName} doesn't have MV.` , lib.lowLog);
-    } else {
-      showLog(`updateMvDocuments | (CHILDREN-POPULATE)Updating populate-${modelName}'s MV collection.`, lib.lowLog);
-      // そのModelがmv_populateとして埋め込まれている際に更新処理を行う
-      let toUpdateMv = {};
-      Object.keys(docs).forEach((value) => {
-        // populate_modelが更新されているModelと一致した際にpopulateをpushして保存する
-        Object.keys(docs[value].populate_model).forEach((key) => {
-          if (docs[value].populate_model[key] === modelName) {
-            if (!Array.isArray(toUpdateMv[docs[value].original_model])) {
-              toUpdateMv[docs[value].original_model] = [];
-            }
-            toUpdateMv[docs[value].original_model].push(docs[value].populate[key])
+  let MvLogChildRes = await logModelList['Mvlog'].find({populate_model: {$elemMatch:{$eq: modelName}}, is_deleted: false}).exec();
+  if (MvLogChildRes.length < 1) {
+    showLog(`updateMvDocuments | (CHILDREN-POPULATE)NOT Updating populate-${modelName}'s MV collection BECAUSE populate-${modelName} doesn't have MV.` , lib.lowLog);
+  } else {
+    showLog(`updateMvDocuments | (CHILDREN-POPULATE)Updating populate-${modelName}'s MV collection.`, lib.lowLog);
+    // そのModelがmv_populateとして埋め込まれている際に更新処理を行う
+    let toUpdateMv = {};
+    Object.keys(MvLogChildRes).forEach((value) => {
+      // populate_modelが更新されているModelと一致した際にpopulateをpushして保存する
+      Object.keys(MvLogChildRes[value].populate_model).forEach((key) => {
+        if (MvLogChildRes[value].populate_model[key] === modelName) {
+          if (!Array.isArray(toUpdateMv[MvLogChildRes[value].original_model])) {
+            toUpdateMv[MvLogChildRes[value].original_model] = [];
           }
-        });
+          toUpdateMv[MvLogChildRes[value].original_model].push(MvLogChildRes[value].populate[key])
+        }
       });
-      updateChildrenMv(toUpdateMv, doc_ids, processId, modelName);
-    }
-  });
+    });
+    await updateChildrenMv(toUpdateMv, doc_ids, processId, modelName);
+  }
 }
 
 // populate先のMV更新
-function updateChildrenMv(toUpdateMv, doc_ids, processId, parentModelName) {
-  Object.keys(toUpdateMv).forEach(modelName_key => {
-    Object.keys(toUpdateMv[modelName_key]).forEach(populate_key => {
+let updateChildrenMv = async (toUpdateMv, doc_ids, processId, parentModelName) => {
+  let toUpdateModelIndex = Object.keys(toUpdateMv);
+  for(let index = 0; index < toUpdateModelIndex.length; index++) {
+    let modelName_key = toUpdateModelIndex[index];
+    let populateIndex = Object.keys(toUpdateMv[modelName_key]);
+    for(let index2 = 0; index2 < populateIndex.length; index2++) {
+      let populate_key = populateIndex[index2];
       let path = toUpdateMv[modelName_key][populate_key] + '._id';
       let query = { [path]: {$in: doc_ids}};
-      mvModelList[modelName_key].find(query, (err, docs) => {
-        if (err) return console.log(err);
-        if (docs.length < 1) return;
-        var to_update_ids = Object.keys(docs).map((element) => {
-          return docs[element]._id;
-        });
-        showLog(`updateChildrenMv | (CHILDREN-POPULATE)Updating populate-MV ${to_update_ids.length} docs in ${modelName_key}`, lib.lowLog);
-        mv.createMvDocument(modelName_key, docs[0].log_populate, processId, parentModelName, to_update_ids);
+      // mvコレクションにあるドキュメントのみcreateMvする
+      let docs = await mvModelList[modelName_key].find(query).exec();
+      if (docs.length < 1) continue;
+      let to_update_ids = Object.keys(docs).map((element) => {
+        // 更新するidをリスト化
+        return docs[element]._id;
       });
-    });
-  });
+      showLog(`updateChildrenMv | (CHILDREN-POPULATE)Updating populate-MV ${to_update_ids.length} docs in ${modelName_key}`, lib.lowLog);
+      await mv.createMvDocument(modelName_key, docs[0].log_populate, processId, parentModelName, to_update_ids);
+    }
+  }
 }
 
 module.exports = {

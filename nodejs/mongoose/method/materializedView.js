@@ -42,26 +42,23 @@ let createMvDocument = async function createMvDocument(modelName, populate, proc
     exec();
   if (documentIds) {
     // idが指定されている場合はMVを個別に更新する
-    if (err) return console.log(err);
     showLog(`createMvDocument | Return mvDocuments From ORIGINAL ${modelName}`, lib.normalLog);
-    Object.keys(mvDocuments).forEach((value) => {
+    for(let index = 0; index < mvDocuments.length; index++) {
       // ログ要素を追加
-      mvDocuments[value] = mvDocuments[value].toObject();
-      mvDocuments[value].log_populate = populate;
-      mvDocuments[value].log_updated_at = new Date();
-      showLog(`createMvDocument | Saving to Mv${modelName} about id: ${mvDocuments[value]._id}`, logLev);
+      mvDocuments[index] = mvDocuments[index].toObject();
+      mvDocuments[index].log_populate = populate;
+      mvDocuments[index].log_updated_at = new Date();
+      showLog(`createMvDocument | Saving to Mv${modelName} about id: ${mvDocuments[index]._id}`, logLev);
       // mvをdbに保存
-      mvModelList[modelName].replaceOne(
-        {_id: mvDocuments[value]._id},  // idで検索する
-        mvDocuments[value],  // 保存するobject
-        {upsert: true, setDefaultsOnInsert: true},
-        (err, res) => {
-          if (processId != null) {
-            modelBilder.queryLogUpdate(processId, parentModelName, `Mv${modelName}`, true);
-          }
-          showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[value]._id}, ok:${res.ok}, matchedCount:${res.n}, modifiedCount:${res.nModified}, now:${performance.now()}`, logLev);
-        });
-    });
+      let response =  await mvModelList[modelName].replaceOne(
+        {_id: mvDocuments[index]._id},  // idで検索する
+        mvDocuments[index],  // 保存するobject
+        {upsert: true, setDefaultsOnInsert: true}).exec();
+      if (processId != null) {
+        modelBilder.queryLogUpdate(processId, parentModelName, `Mv${modelName}`, true);
+      }
+      showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[index]._id}, now:${performance.now()}`, logLev);
+    }
     createMvLog(modelName, collectionName, populate);
     return 'ok';
   } else {
@@ -154,7 +151,7 @@ let judgeCreateMv = async (callback) => {
     // model一覧
     let modelIndex = Object.keys(populateListForModel);
     // model毎にmv化チェックをする
-    for (let index = 0; index < modelIndex.length; index++) {
+    for(let index = 0; index < modelIndex.length; index++) {
       let model = modelIndex[index];
       if (populateListForModel[model].length === 0) {
         // populate先がないのでmv判定不要
