@@ -36,6 +36,7 @@ let createMvDocument = async function createMvDocument(modelName, populate, proc
     showLog(`createMvDocument | Create Mv Collection of ${modelName}`, lib.normalLog);
   }
   // 結合したコレクションの取得
+  // TODO: skipとlimitで段階的に取得
   let mvDocuments = await modelList[modelName].
     find(query).
     populate(populate).
@@ -63,7 +64,7 @@ let createMvDocument = async function createMvDocument(modelName, populate, proc
     return 'ok';
   } else {
     // モデル全体をMV化する場合にはmvコレクションを削除し,新しくinsertManyする
-    await hardRemoveMvDocument(lib.getMvCollectionName(collectionName));
+    await hardRemoveMvDocument(lib.getMvCollectionName(collectionName), modelName).catch((err) => showLog(`[ERROR] FAIL Remove Old Mv of ${modelName}`, lib.lowLog));
     showLog(`createMvDocument | Finish Remove Old Mv of ${modelName}`, lib.wasteLog);
     Object.keys(mvDocuments).forEach((value) => {
       // ログ要素を追加
@@ -90,26 +91,33 @@ let createMvDocument = async function createMvDocument(modelName, populate, proc
 };
 
 // MVドキュメントの初期化
-let hardRemoveMvDocument = async (removeMvName) => {
+let hardRemoveMvDocument = async (removeMvName, modelName) => {
   showLog(`HARD Remove (MV)-collections of ${removeMvName}`, lib.topLog);
-  db.dropCollection(removeMvName, (err, res) => {
-    if (err) {
-      showLog(`Error HARD Remove (MV)-collections of ${removeMvName}`, lib.normalLog);
-      throw err;
-      callback(err, null);
-    } else {
-      showLog(`Success HARD Remove (MV)-collections of ${removeMvName}`, lib.normalLog);
-      return res;
-    }
-  });
+  let count = await mvModelList[modelName].countDocuments();
+  if (count > 0) {
+    db.dropCollection(removeMvName, (err, res) => {
+      if (err) {
+        showLog(`Error HARD Remove (MV)-collections of ${removeMvName}`, lib.normalLog);
+        throw err;
+        callback(err, null);
+      } else {
+        showLog(`Success HARD Remove (MV)-collections of ${removeMvName}`, lib.normalLog);
+        return res;
+      }
+    });
+  } else {
+    return {"message": "no drop collection Because no collections in DB"};
+  }
 };
 
 // 全てのモデルに対してMV作成
-let createMvDocumentAll = function createMvDocumentAll(callback) {
+let createMvDocumentAll = async (callback) => {
   showLog('Starting createMvDocumentAll', lib.topLog);
-  Object.keys(populateListForModel).forEach(value => {
-    createMvDocument(value, populateListForModel[value], null, value, null);
-  });
+  let populateListForModelIndex = Object.keys(populateListForModel);
+  for(let index = 0; index < populateListForModelIndex.length; index++) {
+    let modelNameIndex = populateListForModelIndex[index];
+    await createMvDocument(modelNameIndex, populateListForModel[modelNameIndex], null, modelNameIndex, null).catch((err) => showLog(`[ERROR] FAIL createMvDocument`, lib.topLog));
+  }
   callback(null, {"message": "ok"});
 };
 

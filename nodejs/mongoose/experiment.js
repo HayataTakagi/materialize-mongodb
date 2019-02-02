@@ -78,60 +78,49 @@ let aggregateTestUpdate = function aggregateTestUpdate(testId, methodName, callb
 };
 
 // データベース削除
-let removeCollections = function removeCollections (body, callback) {
-  showLog('Starting removeCollections', lib.topLog);
-  if (body.isRemoveOriginal || body.isRemoveAll) {
-    showLog(`Remove (ORIGINAL)-collections of [${Object.keys(modelList)}]`, lib.topLog);
-    Object.keys(modelList).forEach(value => {
-      // MVのコレクション名をモデル名から取得
-      let originalCollectionName = utils.toCollectionName(value);
-      // コレクションの削除処理
-      db.dropCollection(originalCollectionName, (err, res) => {
-        if (err) showLog(`Error remove (ORIGINAL)-collections of ${value}`, lib.normalLog);
-        if (res) showLog(`Success remove (ORIGINAL)-collections of ${value}`, lib.normalLog);
+let removeCollections = async (body, callback) => {
+  try {
+    showLog('Starting removeCollections', lib.topLog);
+    if (body.isRemoveOriginal || body.isRemoveAll) {
+      showLog(`Remove (ORIGINAL)-collections of [${Object.keys(modelList)}]`, lib.topLog);
+      Object.keys(modelList).forEach( async (value) => {
+        // MVのコレクション名をモデル名から取得
+        let originalCollectionName = utils.toCollectionName(value);
+        // コレクションの削除処理
+        await db.dropCollection(originalCollectionName).catch((err) => showLog(`[ERROR] FAIL Remove (ORIGINAL)-collections of ${originalCollectionName}`, lib.lowLog));
       });
-    });
-  }
-  if (body.isRemoveMv || body.isRemoveAll) {
-    showLog(`Remove (MV)-collections of [${Object.keys(mvModelList)}]`, lib.topLog);
-    Object.keys(mvModelList).forEach(value => {
-      // MVのコレクション名をモデル名から取得
-      let mvCollectionName = lib.getMvCollectionName(utils.toCollectionName(value));
-      // コレクションの削除処理
-      db.dropCollection(mvCollectionName, (err, res) => {
-        if (err) showLog(`Error remove (MV)-collections of ${value}`, lib.normalLog);
-        if (res) showLog(`Success remove (MV)-collections of ${value}`, lib.normalLog);
+    }
+    if (body.isRemoveMv || body.isRemoveAll) {
+      showLog(`Remove (MV)-collections of [${Object.keys(mvModelList)}]`, lib.topLog);
+      Object.keys(mvModelList).forEach( async (value) => {
+        // MVのコレクション名をモデル名から取得
+        let mvCollectionName = lib.getMvCollectionName(utils.toCollectionName(value));
+        // コレクションの削除処理
+        await db.dropCollection(mvCollectionName).catch((err) => showLog(`[ERROR] FAIL Remove (MV)-collections of ${mvCollectionName}`, lib.lowLog));
       });
-    });
-  }
-  if (body.isRemoveLog || body.isRemoveAll) {
-    showLog(`Remove (LOG)-collections of [${Object.keys(logModelList)}]`, lib.topLog);
-    Object.keys(logModelList).forEach(value => {
-      // MVのコレクション名をモデル名から取得
-      let logCollectionName = utils.toCollectionName(value);
-      // コレクションの削除処理
-      db.dropCollection(logCollectionName, (err, res) => {
-        if (err) showLog(`Error remove (LOG)-collections of ${value}`, lib.normalLog);
-        if (res) showLog(`Success remove (LOG)-collections of ${value}`, lib.normalLog);
+    }
+    if (body.isRemoveLog || body.isRemoveAll) {
+      showLog(`Remove (LOG)-collections of [${Object.keys(logModelList)}]`, lib.topLog);
+      Object.keys(logModelList).forEach( async (value) => {
+        // MVのコレクション名をモデル名から取得
+        let logCollectionName = utils.toCollectionName(value);
+        // コレクションの削除処理
+        await db.dropCollection(logCollectionName).catch((err) => showLog(`[ERROR] FAIL Remove (LOG)-collections of ${logCollectionName}`, lib.lowLog));
       });
-    });
+    }
+    if (body.isRemoveMvLog) {
+      showLog(`Remove (MVLOG)-collections of [Mvlog]`, lib.topLog);
+      // コレクションの削除処理
+      await db.dropCollection('mvlogs').catch((err) => showLog(`[ERROR] FAIL Remove (MVLOG)-collections of [Mvlog]`, lib.lowLog));
+    }
+    if (body.removeMvName) {
+      showLog(`HARD Remove (MV)-collections of ${body.removeMvName}`, lib.topLog);
+      await db.dropCollection(body.removeMvName).catch((err) => showLog(`[ERROR] FAIL HARD Remove (MV)-collections of ${body.removeMvName}`, lib.lowLog));
+    }
+    callback(null, {"message": "OK"});
+  } catch (e) {
+    console.error(e);
   }
-  if (body.isRemoveMvLog) {
-    showLog(`Remove (MVLOG)-collections of [Mvlog]`, lib.topLog);
-    // コレクションの削除処理
-    db.dropCollection('mvlogs', (err, res) => {
-      if (err) showLog(`Error remove (MVLOG)-collections`, lib.normalLog);
-      if (res) showLog(`Success remove (MVLOG)-collections`, lib.normalLog);
-    });
-  }
-  if (body.removeMvName) {
-    showLog(`HARD Remove (MV)-collections of ${body.removeMvName}`, lib.topLog);
-    db.dropCollection(body.removeMvName, (err, res) => {
-      if (err) showLog(`Error HARD Remove (MV)-collections of ${body.removeMvName}`, lib.normalLog);
-      if (res) showLog(`Success HARD Remove (MV)-collections of ${body.removeMvName}`, lib.normalLog);
-    });
-  }
-  callback(null, {"message": "OK"});
 };
 
 module.exports = {

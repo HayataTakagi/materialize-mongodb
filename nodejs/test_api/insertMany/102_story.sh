@@ -1,5 +1,5 @@
 #!/bin/sh
-for (( i = 0; i < 200; i++ )); do
+for (( i = 0; i < 2000; i++ )); do
   curl -X POST \
     http://192.168.33.11:3000/insertMany \
     -H 'Content-Type: application/json' \
