@@ -109,17 +109,10 @@ app.post("/update", (req, res, next) => {
 
 app.post("/createMv", (req, res, next) => {
   let requiredVariables = ["modelName", "populate"];
-  initPostMethod("createMv", requiredVariables, req.body, (err) => {
+  initPostMethod("createMv", requiredVariables, req.body, async (err) => {
     if (err) return res.json(err);
-    mv.createMvDocument(req.body.modelName, req.body.populate, null, null, req.body.documentIds, (err, response) => {
-      if (err) {
-        res.json({"code": "error"});
-      } else if (response) {
-        res.json(response);
-      } else {
-        res.json({"code": "no response"});
-      }
-    });
+    await mv.createMvDocument(req.body.modelName, req.body.populate, null, null, req.body.documentIds);
+    res.json({"code": "ok"});
   });
 });
 
