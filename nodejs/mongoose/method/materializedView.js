@@ -13,6 +13,7 @@ var db = mongoose.connection;
 const modelBilder = require('./../static/modelBilder');
 const lib = require('./../lib');
 const experiment = require('./../experiment');
+const mongoDriver = require('./mongoDriver');
 const showLog = lib.showLog;
 
 // モデルリストの定義
@@ -24,7 +25,7 @@ const populateModelList = modelBilder.populateModelList;
 const populateListForModel = modelBilder.populateListForModel;
 
 // MVの作成
-let createMvDocument = function createMvDocument(modelName, populate, processId, parentModelName, documentIds=null) {
+let createMvDocument = async function createMvDocument(modelName, populate, processId, parentModelName, documentIds=null, callback) {
   let collectionName = utils.toCollectionName(modelName);
   var query = {};
   if (documentIds) {
@@ -61,9 +62,10 @@ let createMvDocument = function createMvDocument(modelName, populate, processId,
           });
       });
       createMvLog(modelName, collectionName, populate);
+      return true;
     } else {
       // モデル全体をMV化する場合にはmvコレクションを削除し,新しくinsertManyする
-      hardRemoveMvDocument(lib.getMvCollectionName(collectionName), (err, res) => {
+      hardRemoveMvDocument(lib.getMvCollectionName(collectionName), async (err, res) => {
         if (err) {
           showLog(`createMvDocument | Miss Remove Old Mv of ${modelName}`, lib.wasteLog);
         }
@@ -72,23 +74,23 @@ let createMvDocument = function createMvDocument(modelName, populate, processId,
           // ログ要素を追加
           mvDocuments[value] = mvDocuments[value].toObject();
           mvDocuments[value].log_populate = populate;
+          mvDocuments[value].log_created_at = new Date();
+          mvDocuments[value].log_updated_at = new Date();
         });
         showLog(`createMvDocument | Finish set Variables Mv of ${modelName}`, lib.wasteLog);
-        let divideLength = 20;
-        // for(let i = 0; i < mvDocuments.length; i += divideLength){
-        for(let i = 0; i < 2000; i += divideLength){
+        let divideLength = 50;
+        // 非同期処理
+        for(let i = 0; i < mvDocuments.length; i += divideLength){
           // 指定した個数ずつに分割する
           let splitmvDocuments = mvDocuments.slice(i, i + divideLength);
           showLog(`createMvDocument | Finish split MvDocuments of ${modelName},${i}`, lib.wasteLog);
           // mvを保存
-          modelBilder.mvModelList[modelName].
-          insertMany(splitmvDocuments, (err, docs) => {
-            if (err) return console.log(err);
-            showLog(`createMvDocument | Finish Create Mv(${i}/${mvDocuments.length}) Collection of ${modelName}`, lib.normalLog);
-          });
+          await mongoDriver.mongoinsertMany(lib.getMvCollectionName(collectionName), splitmvDocuments);
+          showLog(`createMvDocument | Finish Create Mv(${i}/${mvDocuments.length}) MvCollection of ${modelName}`, lib.normalLog);
         }
         // MVログを記録
         createMvLog(modelName, collectionName, populate);
+        callback(null, {"code": "ok"});
       });
     }
   });
@@ -112,7 +114,7 @@ let hardRemoveMvDocument = (removeMvName, callback) => {
 let createMvDocumentAll = function createMvDocumentAll(callback) {
   showLog('Starting createMvDocumentAll', lib.topLog);
   Object.keys(populateListForModel).forEach(value => {
-    createMvDocument(value, populateListForModel[value], null, value);
+    createMvDocument(value, populateListForModel[value], null, value, null, () => {});
   });
   callback(null, {"message": "ok"});
 };
@@ -182,7 +184,7 @@ let judgeCreateMv = function judgeCreateMv(callback) {
                 if (Object.keys(logList)[0] === "findOne") {
                   showLog(`${model} should be created MV BECAUSE has only findOne Log.`, lib.normalLog);
                   // MV作成
-                  createMvDocument(model, populateListForModel[model], null, model);
+                  createMvDocument(model, populateListForModel[model], null, model, null, () => {});
                 } else {
                   showLog(`${model} has only update Log.`, lib.normalLog);
                 }
@@ -191,7 +193,7 @@ let judgeCreateMv = function judgeCreateMv(callback) {
                 if (logList["findOne"]["count_post"] > logList["update"]["count_post"] * env.MV_FIND_UPDATE_PERCENTAGE) {
                   showLog(`${model} should be created MV BECAUSE find/update is OVER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
                   // MV作成
-                  createMvDocument(model, populateListForModel[model], null, model);
+                  createMvDocument(model, populateListForModel[model], null, model, null, () => {});
                 } else {
                   showLog(`${model} should NOT be created MV BECAUSE find/update is LOWER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
                 }
@@ -225,7 +227,7 @@ let judgeCreateMv = function judgeCreateMv(callback) {
                 if (Object.keys(logList)[0] === "findOne") {
                   showLog(`${model} should be created MV BECAUSE has only findOne Log.`, lib.normalLog);
                   // MV作成
-                  createMvDocument(model, populateListForModel[model], null, model);
+                  createMvDocument(model, populateListForModel[model], null, model, null, () => {});
                 } else {
                   showLog(`${model} has only update Log.`, lib.normalLog);
                 }
@@ -234,7 +236,7 @@ let judgeCreateMv = function judgeCreateMv(callback) {
                 if (logList["findOne"]["count_post"] > logList["update"]["count_post"] * env.MV_FIND_UPDATE_PERCENTAGE) {
                   showLog(`${model} should be created MV BECAUSE find/update is OVER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
                   // MV作成
-                  createMvDocument(model, populateListForModel[model], null, model);
+                  createMvDocument(model, populateListForModel[model], null, model, null, () => {});
                 } else {
                   showLog(`${model} should NOT be created MV BECAUSE find/update is LOWER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
                 }

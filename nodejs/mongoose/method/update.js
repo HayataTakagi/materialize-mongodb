@@ -78,7 +78,7 @@ function updateMvDocuments(originalDocs, modelName, query, updateDocument, proce
       showLog(`updateMvDocuments | (PARENT-POPULATE)NOT Updating ${modelName}'s MV collection BECAUSE ${modelName} doesn't have MV.` , lib.normalLog);
     } else {
       showLog(`updateMvDocuments | (PARENT-POPULATE)Updating ${modelName}'s MV collection.`, lib.normalLog);
-      mv.createMvDocument(modelName, docs[0].populate, processId, modelName, doc_ids);
+      mv.createMvDocument(modelName, docs[0].populate, processId, modelName, doc_ids, () => {});
     }
   });
 
@@ -125,7 +125,7 @@ function updateChildrenMv(toUpdateMv, doc_ids, processId, parentModelName) {
           return docs[element]._id;
         });
         showLog(`updateChildrenMv | (CHILDREN-POPULATE)Updating populate-MV ${to_update_ids.length} docs in ${modelName_key}`, lib.lowLog);
-        mv.createMvDocument(modelName_key, docs[0].log_populate, processId, parentModelName, to_update_ids);
+        mv.createMvDocument(modelName_key, docs[0].log_populate, processId, parentModelName, to_update_ids, () => {});
       });
     });
   });
