@@ -14,6 +14,7 @@ const modelBilder = require('./../static/modelBilder');
 const lib = require('./../lib');
 const experiment = require('./../experiment');
 const mongoDriver = require('./mongoDriver');
+const index = require('./../index');
 const showLog = lib.showLog;
 
 // モデルリストの定義
@@ -27,62 +28,61 @@ const populateListForModel = modelBilder.populateListForModel;
 // MVの作成
 let createMvDocument = async function createMvDocument(modelName, populate, processId, parentModelName, documentIds=null) {
   let collectionName = utils.toCollectionName(modelName);
-  var query = {};
   if (documentIds) {
-    query._id = documentIds;
-    var logLev = lib.normalLog;
-  } else {
-    var logLev = lib.lowLog;
-    showLog(`createMvDocument | Create Mv Collection of ${modelName}`, lib.normalLog);
-  }
-  // 結合したコレクションの取得
-  // TODO: skipとlimitで段階的に取得
-  let mvDocuments = await modelList[modelName].
-    find(query).
-    populate(populate).
-    exec();
-  if (documentIds) {
+    // 該当IDの結合したコレクションの取得
+    let mvDocuments = await modelList[modelName]
+      .find({_id: documentIds})
+      .populate(populate)
+      .exec()
+      .catch((err) => showLog(`[ERROR] FAIL Get mvDocuments of ${modelName}`, lib.lowLog));
     // idが指定されている場合はMVを個別に更新する
-    showLog(`createMvDocument | Return mvDocuments From ORIGINAL ${modelName}`, lib.normalLog);
     for(let index = 0; index < mvDocuments.length; index++) {
       // ログ要素を追加
       mvDocuments[index] = mvDocuments[index].toObject();
       mvDocuments[index].log_populate = populate;
       mvDocuments[index].log_updated_at = new Date();
-      showLog(`createMvDocument | Saving to Mv${modelName} about id: ${mvDocuments[index]._id}`, logLev);
       // mvをdbに保存
       let response =  await mvModelList[modelName].replaceOne(
         {_id: mvDocuments[index]._id},  // idで検索する
         mvDocuments[index],  // 保存するobject
         {upsert: true, setDefaultsOnInsert: true}).exec();
+      // update時のクエリを記録
       if (processId != null) {
         modelBilder.queryLogUpdate(processId, parentModelName, `Mv${modelName}`, true);
       }
-      showLog(`createMvDocument | modelName:${modelName}, id: ${mvDocuments[index]._id}, now:${performance.now()}`, logLev);
+      showLog(`createMvDocument | Finish Saving to Mv${modelName}(${index+1}/${mvDocuments.length}) about id: ${mvDocuments[index]._id}`, lib.normalLog);
     }
+    // MVログの更新
     createMvLog(modelName, collectionName, populate);
     return 'ok';
   } else {
+    showLog(`createMvDocument | Create Mv Collection of ${modelName}`, lib.normalLog);
     // モデル全体をMV化する場合にはmvコレクションを削除し,新しくinsertManyする
     await hardRemoveMvDocument(lib.getMvCollectionName(collectionName), modelName).catch((err) => showLog(`[ERROR] FAIL Remove Old Mv of ${modelName}`, lib.lowLog));
     showLog(`createMvDocument | Finish Remove Old Mv of ${modelName}`, lib.wasteLog);
-    Object.keys(mvDocuments).forEach((value) => {
-      // ログ要素を追加
-      mvDocuments[value] = mvDocuments[value].toObject();
-      mvDocuments[value].log_populate = populate;
-      mvDocuments[value].log_created_at = new Date();
-      mvDocuments[value].log_updated_at = new Date();
-    });
-    showLog(`createMvDocument | Finish set Variables Mv of ${modelName}`, lib.wasteLog);
-    let divideLength = 50;
-    // 非同期処理
-    for(let i = 0; i < mvDocuments.length; i += divideLength){
-      // 指定した個数ずつに分割する
-      let splitmvDocuments = mvDocuments.slice(i, i + divideLength);
-      showLog(`createMvDocument | Finish split MvDocuments of ${modelName},${i}`, lib.wasteLog);
-      // mvを保存
-      await mongoDriver.mongoinsertMany(lib.getMvCollectionName(collectionName), splitmvDocuments);
-      showLog(`createMvDocument | Finish Create Mv(${i}/${mvDocuments.length}) MvCollection of ${modelName}`, lib.normalLog);
+    // コレクションサイズを取得
+    let count = await modelList[modelName].countDocuments().catch((err) => showLog(`[ERROR] FAIL countDocuments of ${modelName}`, lib.lowLog));
+    const limitDoc = 50;  // 50件ずつ取得する
+    let loop = Math.ceil(count / limitDoc);  // 取得回数
+    for (let i = 0; i < loop; i++) {
+      let skip = limitDoc * i;
+      // 結合したコレクションを取得
+      let mvDocuments = await modelList[modelName]
+        .find()
+        .skip(skip)
+        .limit(limitDoc)
+        .populate(populate)
+        .exec()
+        .catch((err) => showLog(`[ERROR] FAIL Get mvDocuments of ${modelName}`, lib.lowLog));
+        Object.keys(mvDocuments).forEach((value) => {
+          // ログ要素を追加
+          mvDocuments[value] = mvDocuments[value].toObject();
+          mvDocuments[value].log_populate = populate;
+          mvDocuments[value].log_created_at = new Date();
+          mvDocuments[value].log_updated_at = new Date();
+        });
+        await mongoDriver.mongoinsertMany(lib.getMvCollectionName(collectionName), mvDocuments);
+        showLog(`createMvDocument | Finish Create Mv(${i+1}/${loop}) MvCollection of ${modelName}`, lib.normalLog);
     }
     // MVログを記録
     createMvLog(modelName, collectionName, populate);
@@ -131,8 +131,9 @@ function reverceCreateMvDocument(modelName) {
 }
 
 // MV作成判断
-let judgeCreateMv = async (callback) => {
+let judgeCreateMv = async (isChecked=null, callback) => {
   let analizeMethodList = ["update", "findOne"];  // 解析に用いるMongoのmethod
+  var shouldCreateMvList = [];
   showLog('Starting judgeCreateMv', lib.topLog);
   // ユーザーログの読み込み
   let aggregate = await logModelList['Userlog'].aggregate([
@@ -140,6 +141,7 @@ let judgeCreateMv = async (callback) => {
       date: {
         $lt: new Date(),
         $gte: new Date(Date.now() - env.MV_ANALYSIS_PERIOD)},
+      test_id: global.testId,
       }},
       { $group: {
         _id: {ori_model_name: "$ori_model_name", method: "$method", is_rewrited: "$is_rewrited", process_id: "$process_id"},
@@ -188,8 +190,13 @@ let judgeCreateMv = async (callback) => {
             // findOneのみの場合はMV化し,updateのみの場合はMV化しない
             if (Object.keys(logList)[0] === "findOne") {
               showLog(`${model} should be created MV BECAUSE has only findOne Log.`, lib.normalLog);
-              // MV作成
-              await createMvDocument(model, populateListForModel[model], null, model, null);
+              if (isChecked) {
+                // リストに追加
+                shouldCreateMvList.push(model);
+              } else {
+                // MV作成
+                await createMvDocument(model, populateListForModel[model], null, model, null);
+              }
             } else {
               showLog(`${model} has only update Log.`, lib.normalLog);
             }
@@ -197,8 +204,13 @@ let judgeCreateMv = async (callback) => {
             // findOneとupdateのクエリ数の比を比べる
             if (logList["findOne"]["count_post"] > logList["update"]["count_post"] * env.MV_FIND_UPDATE_PERCENTAGE) {
               showLog(`${model} should be created MV BECAUSE find/update is OVER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
-              // MV作成
-              await createMvDocument(model, populateListForModel[model], null, model, null);
+              if (isChecked) {
+                // リストに追加
+                shouldCreateMvList.push(model);
+              } else {
+                // MV作成
+                await createMvDocument(model, populateListForModel[model], null, model, null);
+              }
             } else {
               showLog(`${model} should NOT be created MV BECAUSE find/update is LOWER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
             }
@@ -231,8 +243,13 @@ let judgeCreateMv = async (callback) => {
             // findOneのみの場合はMV化し,updateのみの場合はMV化しない
             if (Object.keys(logList)[0] === "findOne") {
               showLog(`${model} should be created MV BECAUSE has only findOne Log.`, lib.normalLog);
-              // MV作成
-              await createMvDocument(model, populateListForModel[model], null, model, null);
+              if (isChecked) {
+                // リストに追加
+                shouldCreateMvList.push(model);
+              } else {
+                // MV作成
+                await createMvDocument(model, populateListForModel[model], null, model, null);
+              }
             } else {
               showLog(`${model} has only update Log.`, lib.normalLog);
             }
@@ -240,8 +257,13 @@ let judgeCreateMv = async (callback) => {
             // findOneとupdateのクエリ数の比を比べる
             if (logList["findOne"]["count_post"] > logList["update"]["count_post"] * env.MV_FIND_UPDATE_PERCENTAGE) {
               showLog(`${model} should be created MV BECAUSE find/update is OVER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
-              // MV作成
-              await createMvDocument(model, populateListForModel[model], null, model, null);
+              if (isChecked) {
+                // リストに追加
+                shouldCreateMvList.push(model);
+              } else {
+                // MV作成
+                await createMvDocument(model, populateListForModel[model], null, model, null);
+              }
             } else {
               showLog(`${model} should NOT be created MV BECAUSE find/update is LOWER ${env.MV_FIND_UPDATE_PERCENTAGE}.`, lib.normalLog);
             }
@@ -250,7 +272,7 @@ let judgeCreateMv = async (callback) => {
           }
           // ===== コピー終わり
 
-        } else if (!mvLogDoc[0]["is_deleted"]) {
+        } else if (!mvLogDoc[0]["is_deleted"] && !isChecked) {
           // mvが存在する
           // 逆MV化条件の検討
           showLog(`${model} has MV.`, lib.normalLog);
@@ -293,7 +315,11 @@ let judgeCreateMv = async (callback) => {
         }
       }
     }
-    callback(null, aggregate);
+    if (isChecked) {
+      callback(null, shouldCreateMvList);
+    } else {
+      callback(null, aggregate);
+    }
 };
 
 // populate先がschemaで宣言されているか
@@ -336,6 +362,22 @@ function createMvLog(modelName, collectionName, populate, isDelete=false) {
   ]);
 }
 
+// mvが作成されているかのチェック
+let checkCompletedCreatedMv = async (checkModelList, mvNum) => {
+  let completeModel = [];
+  let unCompleteModel = [];
+  for (let i = 0; i < checkModelList.length; i++) {
+    let count = await mvModelList[checkModelList[i]].countDocuments();
+    if (count !== mvNum) {
+      console.log(`!!!!!!!${checkModelList[i]} hasn't be created all MV!!!!!!!!!`);
+      unCompleteModel.push(checkModelList[i]);
+    } else {
+      completeModel.push(checkModelList[i]);
+    }
+  }
+  return {complete: completeModel, uncomplete: unCompleteModel};
+};
+
 module.exports = {
   // Method
   // MVの作成
@@ -344,4 +386,6 @@ module.exports = {
   createMvDocumentAll: createMvDocumentAll,
   // MV作成判断
   judgeCreateMv: judgeCreateMv,
+  // MV作成完了確認
+  checkCompletedCreatedMv: checkCompletedCreatedMv,
 };

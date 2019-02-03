@@ -131,7 +131,7 @@ app.post("/judgeCreateMv", (req, res, next) => {
   let requiredVariables = [];
   initPostMethod("judgeCreateMv", requiredVariables, req.body, (err) => {
     if (err) return res.json(err);
-    mv.judgeCreateMv((err, docs) => {
+    mv.judgeCreateMv(null, (err, docs) => {
       if (err) return res.json(err);
       res.json(docs);
     });
@@ -167,6 +167,25 @@ app.post("/removeCollections", (req, res, next) => {
     experiment.removeCollections(req.body, (err, docs) => {
       if (err) return res.json(err);
       res.json(docs);
+    });
+  });
+});
+
+app.post("/checkCompletedCreatedMv", (req, res, next) => {
+  let requiredVariables = ["checkModelList", "mvNum"];
+  initPostMethod("checkCompletedCreatedMv", requiredVariables, req.body, async (err) => {
+    if (err) return res.json(err);
+    let resList = await mv.checkCompletedCreatedMv(req.body.checkModelList, req.body.mvNum);
+    res.json(resList);
+  });
+});
+
+app.post("/checkShouldCreatedMv", (req, res, next) => {
+  let requiredVariables = [];
+  initPostMethod("checkShouldCreatedMv", requiredVariables, req.body, async (err) => {
+    if (err) return res.json(err);
+    mv.judgeCreateMv(true, (err, list) => {
+      res.json({shouldCreateMvList: list});
     });
   });
 });
