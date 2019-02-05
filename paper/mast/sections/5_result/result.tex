@@ -104,7 +104,7 @@
 \end{figure}
 
 \section{実験Eの結果}
-実験結果を図\ref{figure:ExperimentE-find}，\ref{figure:ExperimentE-update}，\ref{figure:ExperimentE-total}に示す．検索時間は全実体化と提案手法が同程度で，更新時間が全実体化と比べて提案手法2倍程度速い結果となり，累計処理時間で提案手法が最速という結果となった．
+実験結果を図\ref{figure:ExperimentE-find}，\ref{figure:ExperimentE-update}，\ref{figure:ExperimentE-total}に示す．更新時間が全実体化と比べて提案手法2倍程度速い結果だが，検索時間は全実体化と比べて提案手法が1.2倍程遅く，累計処理時間では全実体化が最速という結果となった．
 \begin{figure}[htbp]
 	\begin{center}
 		\includegraphics[width=30em]{src/ExperimentE-find.pdf} %[trim=left bottom right top]
@@ -151,6 +151,54 @@
 	\label{figure:ExperimentF-total}
 \end{figure}
 
+\section{実験Gの結果}
+実験結果を図\ref{figure:ExperimentG-find}，\ref{figure:ExperimentG-update}，\ref{figure:ExperimentG-total}に示す．検索時間で全実体化が提案手法よりも1.2倍程度速く，更新時間で提案手法が全実体化と比べて2倍程度速い結果となった．累計処理時間では提案手法が最速となった．
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentG-find.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Gの各コレクションの平均検索時間}
+	\label{figure:ExperimentG-find}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentG-update.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Gの各コレクションの平均更新時間}
+	\label{figure:ExperimentG-update}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentG-total.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Gの累計処理時間}
+	\label{figure:ExperimentG-total}
+\end{figure}
+
+\section{実験Hの結果}
+実験結果を図\ref{figure:ExperimentH-find}，\ref{figure:ExperimentH-update}，\ref{figure:ExperimentH-total}に示す．検索時間で全実体化が提案手法よりも1.2倍程度速く，更新時間で提案手法が全実体化と比べて2倍程度速い結果となった．累計処理時間では提案手法が最速となった．
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentH-find.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Hの各コレクションの平均検索時間}
+	\label{figure:ExperimentH-find}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentH-update.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Hの各コレクションの平均更新時間}
+	\label{figure:ExperimentH-update}
+\end{figure}
+\begin{figure}[htbp]
+	\begin{center}
+		\includegraphics[width=30em]{src/ExperimentH-total.pdf} %[trim=left bottom right top]
+	\end{center}
+	\caption{実験Hの累計処理時間}
+	\label{figure:ExperimentH-total}
+\end{figure}
+
 \section{実験の考察}
 \label{sec:Consideration}
 
@@ -158,7 +206,10 @@
 
 実験AからFを通しての累計検索処理時間の推移を図\ref{figure:Experiment-find}に，累計更新処理時間の推移を図\ref{figure:Experiment-update}に，検索と更新を合わせた累計処理時間の推移を図\ref{figure:Experiment-total}に示す．
 
-今回の実験ではupdateクエリ比が1\%以下の場合には実体化なしと比べて全実体化と提案手法が累計処理時間が速い結果となった．提案手法は全実体化と比べて，updateクエリ比によっては累計処理時間が速いという結果となった．提案手法は想定通り全実体化と比べて更新処理時間を削減することができたが，実体化ビューを過剰に削減して検索時間が想定よりも遅くなってしまい，累計処理時間が遅くなってしまうことがあった．今回の実験では\ref{section:MvAlgorithm}節と\ref{section:ReverseMvAlgorithm}節で説明したようなシンプルな実体化条件を使用した為，クエリパターンの変化に適切に対応できなかったと考えられる．
+今回の実験ではupdateクエリ比が3\%以下の場合には実体化なしと比べて全実体化と提案手法が累計処理時間が速い結果となった．提案手法はupdateクエリ比が約1.4\%以上の際に全実体化と比べて累計処理時間が速いという結果となった．提案手法は想定通り全実体化と比べて更新処理時間を削減することができた．
+
+図\ref{figure:Experiment-find}から分かるように，検索速度に関しては全実体化が最速である．全実体化と提案手法の検索処理時間の差はupdateクエリ比が1.0\%以降，ほぼ一定である．一方図\ref{figure:Experiment-update}から分かるように，updateクエリ比が増加するに比例して全実体化と提案手法の更新時間が増加するが，同様に全実体化と提案手法の差も増加する．この全実体化と提案手法の更新処理時間の差が検索処理時間の差を超えるupdateクエリ比が約1.4\%であり，これ以降累計処理時間で提案手法が最速となった．
+
 \begin{figure}[htbp]
 	\begin{center}
 		\includegraphics[width=30em]{src/Experiment-find.pdf} %[trim=left bottom right top]
