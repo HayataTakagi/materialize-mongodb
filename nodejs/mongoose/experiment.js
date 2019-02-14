@@ -123,10 +123,49 @@ let removeCollections = async (body, callback) => {
   }
 };
 
+let aggregateByTestId = async (testId3) => {
+  let aggregate1 = await logModelList['Userlog'].aggregate([
+    { $group: {
+      _id: {ori_model_name: "$ori_model_name", method: "$method", is_rewrited: "$is_rewrited", process_id: "$process_id", test_id: "$test_id"},
+      elapsed_time_max: { $max: "$elapsed_time"}, count_query: { $sum: 1}}
+    },
+    { $group: {
+      _id: { ori_model_name: "$_id.ori_model_name", method: "$_id.method", test_id: "$_id.test_id", is_rewrited: "$_id.is_rewrited"},
+      total_time: { $sum: "$elapsed_time_max"},
+      average_time: { $avg: "$elapsed_time_max"},
+      count_post: { $sum: 1},
+      count_query: { $sum: "$count_query"},}
+    },
+    { $sort: { "_id.test_id": 1, "_id.ori_model_name": 1, "_id.method" :1}
+    },
+  ]).exec();
+  let aggregate2 = await logModelList['Userlog'].aggregate([
+    { $match: {
+      test_id: testId3,}
+    },
+    { $group: {
+      _id: {ori_model_name: "$ori_model_name", method: "$method", is_rewrited: "$is_rewrited", process_id: "$process_id", test_id: "$test_id"},
+      elapsed_time_max: { $max: "$elapsed_time"}, count_query: { $sum: 1}}
+    },
+    { $group: {
+      _id: { ori_model_name: "$_id.ori_model_name", method: "$_id.method", test_id: "$_id.test_id"},
+      total_time: { $sum: "$elapsed_time_max"},
+      average_time: { $avg: "$elapsed_time_max"},
+      count_post: { $sum: 1},
+      count_query: { $sum: "$count_query"},}
+    },
+    { $sort: { "_id.test_id": 1, "_id.ori_model_name": 1, "_id.method" :1}
+    },
+  ]).exec();
+  return {aggregate1: aggregate1, aggregate2: aggregate2};
+};
+
 module.exports = {
   // テストの集計
   aggregateTestFineOne: aggregateTestFineOne,
   aggregateTestUpdate: aggregateTestUpdate,
   // データベースの削除
-  removeCollections: removeCollections
+  removeCollections: removeCollections,
+  // クエリログの集計
+  aggregateByTestId: aggregateByTestId,
 };

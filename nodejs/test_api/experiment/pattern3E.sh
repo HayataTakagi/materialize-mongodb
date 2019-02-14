@@ -3,14 +3,13 @@ processPerModel=20000
 analysisPerQuery=1000
 
 #testId
-testId1=201020101
-testId2=201020102
-testId3=201020103
+testId1=201020501
+testId2=201020502
+testId3=201020503
 
 #実験名
-testName="3A"
-# testName1=$(echo ${testName}-1)
-testName1="3A-1"
+testName="3E"
+testName1=$(echo ${testName}-1)
 testName2=$(echo ${testName}-2)
 testName3=$(echo ${testName}-3)
 
@@ -27,7 +26,7 @@ analysisPeri=$((analysisPerQuery*modelLength))
 . ./components/104_publisher_100th.txt
 
 # updateリストをインポート
-. ./components/update_20thq2u.txt
+. ./components/update_20thq14u.txt
 
 updateIndex=0
 

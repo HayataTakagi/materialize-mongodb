@@ -77,7 +77,7 @@ app.post("/findOne", (req, res, next) => {
   initPostMethod("findOne", requiredVariables, req.body, (err) => {
     if (err) return res.json(err);
     // 時間測定用のprocessIdを設定(グローバル)
-    global.processId = createProcessId(req.body.processNum);
+    global.processId = createProcessId();
     find.findOneDocument(req.body, (err, docs) => {
       if (err) {
           // console.log(err);
@@ -190,6 +190,15 @@ app.post("/checkShouldCreatedMv", (req, res, next) => {
   });
 });
 
+app.post("/aggregateByTestId", (req, res, next) => {
+  let requiredVariables = ["testId3"];
+  initPostMethod("aggregateByTestId", requiredVariables, req.body, async (err) => {
+    if (err) return res.json(err);
+    let response = await experiment.aggregateByTestId(req.body.testId3);
+    res.json(response);
+  });
+});
+
 // グローバル変数をセット
 function setGlobalVariable(body) {
   global.testId = body.testId;
@@ -247,8 +256,8 @@ let initPostMethod = (method, requiredVariables, body, callback) => {
 }
 
 // processId設定
-let createProcessId = (processNum) => {
+let createProcessId = (processNum=null) => {
   let today = new Date();
-  let processStr = processNum !== undefined ? ('0'+processNum).slice(-2) : `${today.getSeconds()}:${today.getMilliseconds()}`;
+  let processStr = processNum ? processNum : performance.now();
   return `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}|${today.getHours()}:${today.getMinutes()}-${processStr}`;
 }
