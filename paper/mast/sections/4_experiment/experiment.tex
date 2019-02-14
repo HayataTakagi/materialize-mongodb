@@ -17,9 +17,9 @@ MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境�
     \caption{実験環境}
 		\label{table:experiment_env}
     \begin{tabular}{|c|c|} \hline
-      マシン & MacBook (Retina, 12-inch, 2017) \\ \hline
-      プロセッサ & 1.2 GHz Intel Core m3\\ \hline
-      メモリ & 8 GB 1867 MHz LPDDR3\\ \hline
+      マシン & MacBook Pro (Retina, 13-inch, Early 2015) \\ \hline
+      プロセッサ & 2.9 GHz Intel Core i5\\ \hline
+      メモリ & 16 GB 1867 MHz DDR3\\ \hline
       データベースシステム & Mongodb version 3.1.10\\ \hline
     \end{tabular}
   \end{center}
@@ -44,29 +44,45 @@ MongooseとはMongoDB用モデリングツールで，Node.jsの非同期環境�
 	\caption{commentコレクションから各コレクションへの参照}
 	\label{figure:ExperimentCollection2}
 \end{figure}
-実験において使用するデータは全て参照型のデータモデルで挿入する．実体化していない状態で検索された場合には結合処理を行い結果を返す．実験に用いるドキュメントはPythonのライブラリであるfaker\cite{faker}を用いて作成した．各コレクションに対して1000ドキュメントを作成した．
+実験において使用するデータは全て参照型のデータモデルで挿入する．実体化していない状態で検索された場合には結合処理を行い結果を返す．実験に用いるドキュメントはPythonのライブラリであるfaker\cite{faker}を用いて作成した．各コレクションに対して10万ドキュメントを作成した．各コレクションの構成を表\ref{table:experimentCollectionNumberOfDocument}に示す．
 
+\begin{table}[htb]
+  \begin{center}
+    \caption{各コレクションの構成}
+		\label{table:experimentCollectionNumberOfDocument}
+    \begin{tabular}{|c|c|c|c|} \hline
+      コレクション名  & ドキュメント数 & 埋め込みコレクション & 埋め込みドキュメント数\\ \hline
+      person & 100,000 & なし & 0 \\ \hline
+      story & 100,000 & person,publisher & 2〜101 \\ \hline
+      publisher & 100,000 & なし & 0\\ \hline
+			comment & 100,000 & person,story & 2\\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
 
 実験では全てのコレクションが従来の参照型のデータモデルを用いたシステムと実体化条件を用いずに全てのコレクションを実体化したシステム，実体化条件を用いて適宜コレクションを実体化するシステムの3つのデータベースシステムを比較する．その際，実体化を用いたシステムでは検索や更新を提案ミドルウェアを用いて処理する．
 
-この3つのシステムを比較する際，検索と更新の比率を変えた5つのクエリパターンを用いて行う．このクエリパターンを表に示す．このパターンを用いて実験A，B，C，D，Eを行う．
+この3つのシステムを比較する際，検索と更新の比率を変えた5つのクエリパターンを用いて行う．このクエリパターンを表に示す．このパターンを用いて実験A，B，C，D，E，F，G，Hを行う．
 \begin{table}[htb]
   \begin{center}
-    \caption{クエリパターン}
+    \caption{各コレクションへのクエリパターン}
 		\label{table:experiment_query_pattern}
-    \begin{tabular}{|c|c|c|} \hline
-        & 検索回数比 & 更新回数比 \\ \hline
-      パターンA & 99.9 & 0.1\\ \hline
-      パターンB & 99 & 1\\ \hline
-      パターンC & 97 & 3\\ \hline
-			パターンD & 95 & 5\\ \hline
-      パターンE & 90 & 10\\ \hline
+    \begin{tabular}{|c|c|c|c|c|c|} \hline
+        & 検索回数比(\%) & 更新回数比(\%) & 検索クエリ数 & 更新クエリ数 & 総クエリ数\\ \hline
+      パターンA & 99.99 & 0.01 & 19,998 & 2 & 20,000 \\ \hline
+      パターンB & 99.98 & 0.02 & 19,998 & 4 & 20,000 \\ \hline
+      パターンC & 99.96 & 0.03 & 19,994 & 6 & 20,000 \\ \hline
+			パターンD & 99.95 & 0.05 & 19,990 & 10 & 20,000 \\ \hline
+      パターンE & 99.93 & 0.07 & 19,986 & 14 & 20,000 \\ \hline
+      パターンF & 99.90 & 0.10 & 19,980 & 20 & 20,000 \\ \hline
+      パターンG & 99.80 & 0.20 & 19,960 & 40 & 20,000 \\ \hline
+      パターンH & 99.70 & 0.30 & 19,940 & 60 & 20,000 \\ \hline
     \end{tabular}
   \end{center}
 \end{table}
 それぞれのパターンに対して，使用したクエリを表\ref{table:ExperimentFindQuery}と表\ref{table:ExperimentUpdateQuery}で示す．MongoDBのドライバのみを用いる場合には\ref{section:AboutMvInDocumentDB}節で説明した様に集計機能を用いて結合処理を実現したが，Mongooseではpopulateメソッドでアプリケーションレベルでの結合処理を実現しており，内部的にはfindメソッドを複数に分けて実行し，アプリケーション側で結合処理を行う．表\ref{table:ExperimentFindQuery}のクエリはMongooseのpopulateメソッドを用いて結合処理をおこなっており，commentコレクションのクエリを例とすると，idがTestIDのcommentドキュメントを"speak.speaker"と"story"のフィールドを結合した状態でfindする処理である．内部的にはcomment，person，storyコレクションに対してクエリを発行している．
 
-提案手法を用いる場合には検索・更新に関わらずクエリが数回処理された際に実体化条件を検討し，適宜実体化ビューを作成，破棄を行う．
+提案手法を用いる場合には検索・更新に関わらずクエリが1,000回処理された際に実体化条件を検討し，適宜実体化ビューを作成，破棄を行う．
 
 \begin{table}[htb]
   \begin{center}

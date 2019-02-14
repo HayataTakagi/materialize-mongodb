@@ -217,7 +217,7 @@ idが123456のfamiliesドキュメントを更新するクエリを表\ref{table
   \end{center}
 \end{table}
 
-次に表\ref{table:MidlewareExampleQuery2}のクエリが順に実行されたとする．クエリ2.1が実行された際にはまずMVログを取得し，peopleコレクションが実体化されているか確認する．表\ref{table:MidlewareExampleMvLog}から，peopleコレクションにfamiliesコレクションが埋め込まれた実体化ビューが存在するので，クエリを書き換えてMongoDBドライバにクエリを発行する．書き換えた後のクエリを表\ref{table:MidlewareExampleQueryRewrite}に示す．クエリ2.2ではfamiliesコレクションを更新しているが，表\ref{table:MidlewareExampleMvLog}からfamiliesドキュメントがpeopleコレクションに実体化ビューとして埋め込まれていることが分かるので，IDが123444のfamiliesドキュメントを保持しているpeopleドキュメントに関しても更新処理を行なっている．クエリ2.3ではpeopleコレクションの更新処理を行なっている．peopleコレクションは実体化されているので実体化ビューとオリジナルのコレクションの更新を同時に行う．
+次に表\ref{table:MidlewareExampleQuery2}のクエリが順に実行されたとする．クエリ2.1が実行された際にはまずMVログを取得し，peopleコレクションが実体化されているか確認する．表\ref{table:MidlewareExampleMvLog}から，peopleコレクションにfamiliesコレクションが埋め込まれた実体化ビューが存在するので，クエリを書き換えてMongoDBドライバにクエリを発行する．書き換え前と書き換え後のクエリの比較を表\ref{table:MidlewareExampleQueryRewrite}に示す．クエリ2.2ではfamiliesコレクションを更新しているが，表\ref{table:MidlewareExampleMvLog}からfamiliesドキュメントがpeopleコレクションに実体化ビューとして埋め込まれていることが分かるので，IDが123444のfamiliesドキュメントを保持しているpeopleドキュメントに関しても更新処理を行なっている．クエリ2.3ではpeopleコレクションの更新処理を行なっている．peopleコレクションは実体化されているので実体化ビューとオリジナルのコレクションの更新を同時に行う．
 
 \begin{table}[htb]
   \begin{center}
@@ -228,7 +228,10 @@ idが123456のfamiliesドキュメントを更新するクエリを表\ref{table
 			\begin{tabular}{l}
 				db.people.aggregate([\\
 				\ \ \{\$match: \{ID: 67890\}\},\\
-				\ \ \{\$lookup: \{ from: "families", localField: "familyID", foreignField: "ID"\}\}\\
+				\ \ \{\$lookup: \{\\
+				\ \ \ \ \ from: "families",\\
+				\ \ \ \ \ localField: "familyID",\\
+				\ \ \ \ \ foreignField: "ID"\}\}\\
 				]);
 			\end{tabular}\\ \hline
 			クエリ2.2 &
@@ -253,14 +256,32 @@ idが123456のfamiliesドキュメントを更新するクエリを表\ref{table
   \begin{center}
     \caption{書き換え後のユーザークエリ2}
 		\label{table:MidlewareExampleQueryRewrite}
-		\begin{tabular}{|c|l|} \hline
-			クエリ2.1' &
+		\begin{tabular}{|c|l|l|} \hline
+			 & \multicolumn{1}{|c|}{書き換え前のクエリ}
+			 & \multicolumn{1}{|c|}{書き換え後のクエリ}
+			 \\ \hline
+			クエリ2.1 &
+			\begin{tabular}{l}
+				db.people.aggregate([\\
+				\ \ \{\$match: \{ID: 67890\}\},\\
+				\ \ \{\$lookup: \{\\
+				\ \ \ \ \ from: "families",\\
+				\ \ \ \ \ localField: "familyID",\\
+				\ \ \ \ \ foreignField: "ID"\}\}\\
+				]);
+			\end{tabular} &
 			\begin{tabular}{l}
 				db.people.find([\\
 				\ \ \{ID: 67890\}\\
 				]);
 			\end{tabular}\\ \hline
-			クエリ2.2' &
+			クエリ2.2 &
+			\begin{tabular}{l}
+				db.families.update(\\
+				\ \ \{ ID: 123444\},\\
+				\ \ \{ \$set: \{ name: "zenbayashi"\}\\
+				\});
+			\end{tabular} &
 			\begin{tabular}{l}
 				db.families.update(\\
 				\ \ \{ ID: 123444\},\\
@@ -271,7 +292,13 @@ idが123456のfamiliesドキュメントを更新するクエリを表\ref{table
 				\ \ \{ \$set: \{ family.\$.name: "zenbayashi"\}\\
 				\});
 			\end{tabular}\\ \hline
-			クエリ2.3' &
+			クエリ2.3 &
+			\begin{tabular}{l}
+				db.people.update(\\
+				\ \ \{ ID: 12345\},\\
+				\ \ \{ \$set: \{ name: "souta"\}\\
+				\});
+			\end{tabular} &
 			\begin{tabular}{l}
 				db.mvpeople.update(\\
 				\ \ \{ ID: 12345\},\\
@@ -351,7 +378,35 @@ idが123456のfamiliesドキュメントを更新するクエリを表\ref{table
 \end{enumerate}
 1の条件は実際のクエリの検索回数・更新回数やその処理時間を元に実体化するコレクションを選定する．2の条件ではドキュメント内の他コレクションへの参照数を元に実体化後の更新処理の増加を予想し，実体化するコレクションを選定する．本論文では更新処理が用意であり，クエリに柔軟に対応できるクエリログの統計を元に実体化する条件を作成する．
 
-\ref{section:ProposedAlgorithmArchitecture}節のプロセス1ではクエリログ1.1から1.4を集計して実体化するコレクションを決定する．提案手法では検索クエリ数と更新クエリ数の比があらかじめ決めた比を超えていた際に実体化を行う．ここでは例として検索クエリ数/更新クエリ数比が20を超えていた際に実体化すると定義すると，プロセス1時点の検索クエリ数/更新クエリ数比はpeopleコレクションが3/0，familiesコレクションが0/1なので，peopleコレクションを実体化する．
+\ref{section:ProposedAlgorithmArchitecture}節のプロセス1ではクエリログ1.1から1.4を集計して実体化するコレクションを決定する．提案手法では検索クエリ数と更新クエリ数の比があらかじめ決めた比を超えていた際に実体化を行う．クエリログ1.1から1.4を集計した結果を表\ref{table:MidlewareExampleAggregate1}に示す．"is\_rewrited"でクエリが実体化ビューに対してか否かを，"total\_time"でクエリの合計処理時間を，"average\_time"でクエリの平均処理時間を，"count\_query"でクエリ数を表している．ここでは例として検索クエリ数/更新クエリ数比が20を超えていた際に実体化すると定義すると，プロセス1時点の検索クエリ数/更新クエリ数比はpeopleコレクションが3/0，familiesコレクションが0/1なので，peopleコレクションを実体化する．
+
+\begin{table}[htb]
+  \begin{center}
+    \caption{プロセス1の際に取得されるクエリログ集計結果}
+		\label{table:MidlewareExampleAggregate1}
+    \begin{tabular}{|c|l|} \hline
+			コレクション & \multicolumn{1}{|c|}{集計結果}\\\hline
+			people &
+			\begin{tabular}{l}
+				\{ "\_id" : \{ "collection\_name" : "people",\\
+				\ \ \ "method" : "findOne",\\
+				\ \ \ "is\_rewrited" : false \},\\
+				\ \ \ "total\_time" : 155.590872, \\
+				\ \ \ "average\_time" : 51.863624,\\
+				\ \ \ "count\_query" : 3 \}\\
+			\end{tabular}\\ \hline
+			families &
+			\begin{tabular}{l}
+				\{ "\_id" : \{ "collection\_name" : "families",\\
+				\ \ \ "method" : "update",\\
+				\ \ \ "is\_rewrited" : false \},\\
+				\ \ \ "total\_time" : 70.36362400003744,\\
+				\ \ \ "average\_time" : 70.36362400003744,\\
+				\ \ \ "count\_query" : 1 \}\\
+			\end{tabular}\\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
 
 \section{逆実体化アルゴリズムについて}
 \label{section:ReverseMvAlgorithm}
@@ -359,6 +414,48 @@ idが123456のfamiliesドキュメントを更新するクエリを表\ref{table
 
 本論文ではクエリのログの統計から実体化後の検索処理時間と更新処理時間を比較し，各コレクションに対して逆実体化の必要性を確認する．
 
-\ref{section:ProposedAlgorithmArchitecture}節のプロセス2では実体化されているコレクションのうち，クエリログ1.1から1.4とクエリログ2.1から2.3を集計して逆実体化するコレクションを決定する．peopleコレクションの検索処理累計時間が192ms，更新処理累計時間が320msで，更新処理累計時間の方が長いので逆実体化を行う．
+\ref{section:ProposedAlgorithmArchitecture}節のプロセス2では実体化されているコレクションのうち，クエリログ1.1から1.4とクエリログ2.1から2.3を集計して逆実体化するコレクションを決定する．クエリログ1.1から2.3を集計した結果を表\ref{table:MidlewareExampleAggregate2}に示す．"is\_rewrited"が"true"であるオブジェクトが実体化後の集計結果である．peopleコレクションの実体化後の検索処理累計時間が37ms，更新処理累計時間が320msで，更新処理累計時間の方が長いので逆実体化を行う．
+
+\begin{table}[htb]
+  \begin{center}
+    \caption{プロセス2の際に取得されるクエリログ集計結果}
+		\label{table:MidlewareExampleAggregate2}
+    \begin{tabular}{|c|l|} \hline
+			コレクション & \multicolumn{1}{|c|}{集計結果}\\\hline
+			people &
+			\begin{tabular}{l}
+				\{ "\_id" : \{ "collection\_name" : "people",\\
+				\ \ \ "method" : "findOne",\\
+				\ \ \ "is\_rewrited" : false \},\\
+				\ \ \ "total\_time" : 155.590872, \\
+				\ \ \ "average\_time" : 51.863624,\\
+				\ \ \ "count\_query" : 3 \}\\
+
+				\{ "\_id" : \{ "collection\_name" : "people",\\
+				\ \ \ "method" : "findOne",\\
+				\ \ \ "is\_rewrited" : true \},\\
+				\ \ \ "total\_time" : 37.263624,\\
+				\ \ \ "average\_time" : 37.263624,\\
+				\ \ \ "count\_query" : 1 \}\\
+
+				\{ "\_id" : \{ "collection\_name" : "people",\\
+				\ \ \ "method" : "update",\\
+				\ \ \ "is\_rewrited" : true \},\\
+				\ \ \ "total\_time" : 320.111248,\\
+				\ \ \ "average\_time" : 160.055624,\\
+				\ \ \ "count\_query" : 2 \}\\
+			\end{tabular}\\ \hline
+			families &
+			\begin{tabular}{l}
+				\{ "\_id" : \{ "collection\_name" : "families",\\
+				\ \ \ "method" : "update",\\
+				\ \ \ "is\_rewrited" : false \},\\
+				\ \ \ "total\_time" : 225.727248,\\
+				\ \ \ "average\_time" : 112.863624,\\
+				\ \ \ "count\_query" : 2 \}\\
+			\end{tabular}\\ \hline
+    \end{tabular}
+  \end{center}
+\end{table}
 
 \end{document}
