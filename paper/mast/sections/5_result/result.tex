@@ -8,7 +8,7 @@
 \chapter{結果・考察}
 \label{chap:Result}
 \section{実験Aの結果}
-実験結果を図\ref{figure:ExperimentA-find}，\ref{figure:ExperimentA-update}，\ref{figure:ExperimentA-total}に示す．図\ref{figure:ExperimentA-find}，\ref{figure:ExperimentA-update}は各コレクションにおけるクエリの平均処理時間を示している．図\ref{figure:ExperimentA-total}は検索処理と更新処理の累計処理時間を示している．検索処理速度に関しては全実体化と提案手法が実体化なしのデータモデルより速い結果となった．一方，更新処理速度は実体化なしのデータモデルが最速であり，personコレクションに関しては全実体化と提案手法でのデータモデルが実体化なしと比べて100倍前後遅い結果となった．累計処理時間に関しては実体化なしに比べて全実体化と提案手法が3倍速い結果となった．
+実験結果を図\ref{figure:ExperimentA-find}，\ref{figure:ExperimentA-update}，\ref{figure:ExperimentA-total}に示す．図\ref{figure:ExperimentA-find}，\ref{figure:ExperimentA-update}は各コレクションにおけるクエリの平均処理時間を示している．図\ref{figure:ExperimentA-total}は検索処理と更新処理の累計処理時間を示している．検索処理速度に関しては全実体化と提案手法が実体化なしのデータモデルより速い結果となった．一方，更新処理速度は実体化なしのデータモデルが最速であり，personコレクションに関しては全実体化と提案手法でのデータモデルが実体化なしと比べて100倍前後遅い結果となった．累計処理時間に関しては実体化なしに比べて全実体化と提案手法が2倍程度速い結果となった．
 \begin{figure}[htbp]
 	\begin{center}
 		\includegraphics[width=30em]{src/ExperimentA-find.pdf} %[trim=left bottom right top]
@@ -80,7 +80,7 @@
 \end{figure}
 
 \section{実験Dの結果}
-実験結果を図\ref{figure:ExperimentD-find}，\ref{figure:ExperimentD-update}，\ref{figure:ExperimentD-total}に示す．概ね実験Cと同じで，更新時間では提案手法が一番速いが，検索時間は全実体化の方が速く，累計処理時間では全実体化が一番速い結果となった．
+実験結果を図\ref{figure:ExperimentD-find}，\ref{figure:ExperimentD-update}，\ref{figure:ExperimentD-total}に示す．概ね実験Cと同じで，更新時間では全実体化と比べて提案手法の方が速いが，検索時間は全実体化の方が速く，累計処理時間では全実体化が一番速い結果となった．
 \begin{figure}[htbp]
 	\begin{center}
 		\includegraphics[width=30em]{src/ExperimentD-find.pdf} %[trim=left bottom right top]
