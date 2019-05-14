@@ -1,0 +1,454 @@
+{
+  "aggregate1": [
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "findOne",
+        "test_id": 201020801,
+        "is_rewrited": false
+      },
+      "total_time": 114934.35578766465,
+      "average_time": 5.764009818839752,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "update",
+        "test_id": 201020801,
+        "is_rewrited": false
+      },
+      "total_time": 686.4486339688301,
+      "average_time": 11.440810566147169,
+      "count_post": 60,
+      "count_query": 60
+    },
+    {
+      "_id": {
+        "ori_model_name": "Person",
+        "method": "findOne",
+        "test_id": 201020801,
+        "is_rewrited": false
+      },
+      "total_time": 51679.656839728355,
+      "average_time": 2.591758116335424,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Person",
+        "method": "update",
+        "test_id": 201020801,
+        "is_rewrited": false
+      },
+      "total_time": 680.804996073246,
+      "average_time": 11.3467499345541,
+      "count_post": 60,
+      "count_query": 60
+    },
+    {
+      "_id": {
+        "ori_model_name": "Publisher",
+        "method": "findOne",
+        "test_id": 201020801,
+        "is_rewrited": false
+      },
+      "total_time": 55711.51489458978,
+      "average_time": 2.793957617582236,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Publisher",
+        "method": "update",
+        "test_id": 201020801,
+        "is_rewrited": false
+      },
+      "total_time": 580.6887700259686,
+      "average_time": 9.678146167099476,
+      "count_post": 60,
+      "count_query": 60
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "findOne",
+        "test_id": 201020801,
+        "is_rewrited": false
+      },
+      "total_time": 179887.80263631046,
+      "average_time": 9.021454495301427,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "update",
+        "test_id": 201020801,
+        "is_rewrited": false
+      },
+      "total_time": 599.1056940257549,
+      "average_time": 9.98509490042925,
+      "count_post": 60,
+      "count_query": 60
+    },
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "findOne",
+        "test_id": 201020802,
+        "is_rewrited": true
+      },
+      "total_time": 31134.86052414775,
+      "average_time": 1.5614273081317829,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "update",
+        "test_id": 201020802,
+        "is_rewrited": true
+      },
+      "total_time": 934.6053779870272,
+      "average_time": 15.576756299783787,
+      "count_post": 60,
+      "count_query": 120
+    },
+    {
+      "_id": {
+        "ori_model_name": "Person",
+        "method": "findOne",
+        "test_id": 201020802,
+        "is_rewrited": true
+      },
+      "total_time": 23963.762660741806,
+      "average_time": 1.2017935135778237,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Person",
+        "method": "update",
+        "test_id": 201020802,
+        "is_rewrited": true
+      },
+      "total_time": 239356.05953200161,
+      "average_time": 3989.2676588666936,
+      "count_post": 60,
+      "count_query": 3377
+    },
+    {
+      "_id": {
+        "ori_model_name": "Publisher",
+        "method": "findOne",
+        "test_id": 201020802,
+        "is_rewrited": true
+      },
+      "total_time": 25404.46683935821,
+      "average_time": 1.2740454784031199,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Publisher",
+        "method": "update",
+        "test_id": 201020802,
+        "is_rewrited": true
+      },
+      "total_time": 29121.05757804215,
+      "average_time": 485.3509596340358,
+      "count_post": 60,
+      "count_query": 181
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "findOne",
+        "test_id": 201020802,
+        "is_rewrited": true
+      },
+      "total_time": 63481.06344662607,
+      "average_time": 3.1836039842841557,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "update",
+        "test_id": 201020802,
+        "is_rewrited": true
+      },
+      "total_time": 5575.156995028257,
+      "average_time": 92.91928325047095,
+      "count_post": 60,
+      "count_query": 197
+    },
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "findOne",
+        "test_id": 201020803,
+        "is_rewrited": true
+      },
+      "total_time": 38916.86403916776,
+      "average_time": 2.0546361881193054,
+      "count_post": 18941,
+      "count_query": 18941
+    },
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "findOne",
+        "test_id": 201020803,
+        "is_rewrited": false
+      },
+      "total_time": 2884.8114811480045,
+      "average_time": 2.8876991803283327,
+      "count_post": 999,
+      "count_query": 999
+    },
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "update",
+        "test_id": 201020803,
+        "is_rewrited": true
+      },
+      "total_time": 1102.4682670235634,
+      "average_time": 18.685902830907853,
+      "count_post": 59,
+      "count_query": 118
+    },
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "update",
+        "test_id": 201020803,
+        "is_rewrited": false
+      },
+      "total_time": 5.764410004019737,
+      "average_time": 5.764410004019737,
+      "count_post": 1,
+      "count_query": 1
+    },
+    {
+      "_id": {
+        "ori_model_name": "Person",
+        "method": "findOne",
+        "test_id": 201020803,
+        "is_rewrited": false
+      },
+      "total_time": 30834.01759658754,
+      "average_time": 1.546339899527961,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Person",
+        "method": "update",
+        "test_id": 201020803,
+        "is_rewrited": false
+      },
+      "total_time": 540.2190020829439,
+      "average_time": 9.003650034715731,
+      "count_post": 60,
+      "count_query": 60
+    },
+    {
+      "_id": {
+        "ori_model_name": "Person",
+        "method": "update",
+        "test_id": 201020803,
+        "is_rewrited": true
+      },
+      "total_time": 240332.72475001216,
+      "average_time": 4073.4360127120704,
+      "count_post": 59,
+      "count_query": 3202
+    },
+    {
+      "_id": {
+        "ori_model_name": "Publisher",
+        "method": "findOne",
+        "test_id": 201020803,
+        "is_rewrited": false
+      },
+      "total_time": 35457.83317808807,
+      "average_time": 1.778226337918158,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Publisher",
+        "method": "update",
+        "test_id": 201020803,
+        "is_rewrited": true
+      },
+      "total_time": 30047.35224300623,
+      "average_time": 751.1838060751558,
+      "count_post": 40,
+      "count_query": 60
+    },
+    {
+      "_id": {
+        "ori_model_name": "Publisher",
+        "method": "update",
+        "test_id": 201020803,
+        "is_rewrited": false
+      },
+      "total_time": 573.6216710358858,
+      "average_time": 9.56036118393143,
+      "count_post": 60,
+      "count_query": 60
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "findOne",
+        "test_id": 201020803,
+        "is_rewrited": true
+      },
+      "total_time": 78646.8787586987,
+      "average_time": 4.15220309163712,
+      "count_post": 18941,
+      "count_query": 18941
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "findOne",
+        "test_id": 201020803,
+        "is_rewrited": false
+      },
+      "total_time": 5711.665258035064,
+      "average_time": 5.71738264067574,
+      "count_post": 999,
+      "count_query": 999
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "update",
+        "test_id": 201020803,
+        "is_rewrited": false
+      },
+      "total_time": 4.859554007649422,
+      "average_time": 4.859554007649422,
+      "count_post": 1,
+      "count_query": 1
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "update",
+        "test_id": 201020803,
+        "is_rewrited": true
+      },
+      "total_time": 6583.725016012788,
+      "average_time": 111.58855959343708,
+      "count_post": 59,
+      "count_query": 195
+    }
+  ],
+  "aggregate2": [
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "findOne",
+        "test_id": 201020803
+      },
+      "total_time": 41801.675520315766,
+      "average_time": 2.096372894699888,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "update",
+        "test_id": 201020803
+      },
+      "total_time": 1108.2326770275831,
+      "average_time": 18.470544617126386,
+      "count_post": 60,
+      "count_query": 119
+    },
+    {
+      "_id": {
+        "ori_model_name": "Person",
+        "method": "findOne",
+        "test_id": 201020803
+      },
+      "total_time": 30834.01759658754,
+      "average_time": 1.546339899527961,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Person",
+        "method": "update",
+        "test_id": 201020803
+      },
+      "total_time": 240872.9437520951,
+      "average_time": 2024.1423844713875,
+      "count_post": 119,
+      "count_query": 3262
+    },
+    {
+      "_id": {
+        "ori_model_name": "Publisher",
+        "method": "findOne",
+        "test_id": 201020803
+      },
+      "total_time": 35457.83317808807,
+      "average_time": 1.778226337918158,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Publisher",
+        "method": "update",
+        "test_id": 201020803
+      },
+      "total_time": 30620.973914042115,
+      "average_time": 306.20973914042116,
+      "count_post": 100,
+      "count_query": 120
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "findOne",
+        "test_id": 201020803
+      },
+      "total_time": 84358.54401673377,
+      "average_time": 4.230619058010721,
+      "count_post": 19940,
+      "count_query": 19940
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "update",
+        "test_id": 201020803
+      },
+      "total_time": 6588.584570020437,
+      "average_time": 109.80974283367395,
+      "count_post": 60,
+      "count_query": 196
+    }
+  ]
+}

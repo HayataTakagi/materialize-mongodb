@@ -1,0 +1,101 @@
+{
+  "aggregate1": [
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "findOne",
+        "test_id": 201020201,
+        "is_rewrited": false
+      },
+      "total_time": 113605.2225529775,
+      "average_time": 5.6813974071303015,
+      "count_post": 19996,
+      "count_query": 19996
+    },
+    {
+      "_id": {
+        "ori_model_name": "Comment",
+        "method": "update",
+        "test_id": 201020201,
+        "is_rewrited": false
+      },
+      "total_time": 42.80462900176644,
+      "average_time": 10.70115725044161,
+      "count_post": 4,
+      "count_query": 4
+    },
+    {
+      "_id": {
+        "ori_model_name": "Person",
+        "method": "findOne",
+        "test_id": 201020201,
+        "is_rewrited": false
+      },
+      "total_time": 50187.314362106845,
+      "average_time": 2.509867691643671,
+      "count_post": 19996,
+      "count_query": 19996
+    },
+    {
+      "_id": {
+        "ori_model_name": "Person",
+        "method": "update",
+        "test_id": 201020201,
+        "is_rewrited": false
+      },
+      "total_time": 54.44267700240016,
+      "average_time": 13.61066925060004,
+      "count_post": 4,
+      "count_query": 4
+    },
+    {
+      "_id": {
+        "ori_model_name": "Publisher",
+        "method": "findOne",
+        "test_id": 201020201,
+        "is_rewrited": false
+      },
+      "total_time": 51773.86232508533,
+      "average_time": 2.5892109584459555,
+      "count_post": 19996,
+      "count_query": 19996
+    },
+    {
+      "_id": {
+        "ori_model_name": "Publisher",
+        "method": "update",
+        "test_id": 201020201,
+        "is_rewrited": false
+      },
+      "total_time": 63.294611003249884,
+      "average_time": 15.823652750812471,
+      "count_post": 4,
+      "count_query": 4
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "findOne",
+        "test_id": 201020201,
+        "is_rewrited": false
+      },
+      "total_time": 183911.38789392821,
+      "average_time": 9.197408876471705,
+      "count_post": 19996,
+      "count_query": 19996
+    },
+    {
+      "_id": {
+        "ori_model_name": "Story",
+        "method": "update",
+        "test_id": 201020201,
+        "is_rewrited": false
+      },
+      "total_time": 31.772699000313878,
+      "average_time": 7.9431747500784695,
+      "count_post": 4,
+      "count_query": 4
+    }
+  ],
+  "aggregate2": []
+}
